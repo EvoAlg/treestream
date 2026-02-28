@@ -1,152 +1,134 @@
-## SCENARIOS.feature (v0.1.9)
-
-### Scenario 1 — Basic Round Trip Integrity
-
-**Given** a root directory containing
-
-* `a.txt` with content `Hello`
-
-**When** the directory is serialized and then reconstructed
-
-**Then** the reconstructed directory shall contain
-
-* `a.txt`
-* with byte-for-byte identical content
-
----
-
-### Scenario 2 — Nested Directory Structure
-
-**Given** a root directory containing
-
-* `docs/readme.txt`
-* `docs/sub/notes.txt`
-
-**When** serialized and reconstructed
-
-**Then** the directory hierarchy shall be identical
-**And** file contents shall match exactly
-
----
-
-### Scenario 3 — Empty File Handling
-
-**Given** a root directory containing
-
-* `empty.txt` with zero bytes
-
-**When** serialized
-
-**Then** the record shall contain `CONTENT_BYTES: 0`
-**And** reconstruction shall recreate a zero-byte file
-
----
-
-### Scenario 4 — CRLF Preservation
-
-**Given** a file containing Windows CRLF line endings (`\r\n`)
-
-**When** serialized
-
-**Then** the serialized content block shall preserve the exact byte sequence
-**And** reconstruction shall reproduce identical bytes
-
----
-
-### Scenario 5 — Deterministic Ordering
-
-**Given** files
-
-* `b.txt`
-* `a.txt`
-* `aa.txt`
-
-**When** serialized
-
-**Then** records shall be sorted by ordinal Unicode code point comparison of PATH
-**And** repeated serialization runs shall produce byte-for-byte identical output
-
----
-
-### Scenario 6 — Invalid UTF-8 File
-
-**Given** a file containing bytes invalid under UTF-8 strict decoding
-
-**When** serialization is attempted
-
-**Then** serialization shall terminate with E4
-
----
-
-### Scenario 7 — Symlink Encounter
-
-**Given** a symlink or junction within the root directory
-
-**When** serialization is attempted
-
-**Then** serialization shall terminate with E5
-
----
-
-### Scenario 8 — Invalid Header During Reconstruction
-
-**Given** a serialized file with incorrect `SPEC_VERSION`
-
-**When** reconstruction is attempted
-
-**Then** reconstruction shall terminate with E7
-
----
-
-### Scenario 9 — Content Length Mismatch
-
-**Given** a serialized file where `CONTENT_BYTES` does not match actual content length
-
-**When** reconstruction is attempted
-
-**Then** reconstruction shall terminate with E8
-
----
-
-### Scenario 10 — Invalid PATH Rules
-
-**Given** a serialized file containing a path with `..`
-
-**When** reconstruction is attempted
-
-**Then** reconstruction shall terminate with E9
-
----
-
-### Scenario 11 — Case-Insensitive Path Collision
-
-**Given** a serialized file containing
-
-* `File.txt`
-* `file.txt`
-
-**When** reconstruction is attempted
-
-**Then** reconstruction shall terminate with E9
-
----
-
-### Scenario 12 — Overwrite Prohibited
-
-**Given** a target directory already containing `a.txt`
-**And** overwrite mode disabled
-
-**When** reconstruction is attempted
-
-**Then** reconstruction shall terminate with E11
-
----
-
-### Scenario 13 — Atomic Serialization Output
-
-**Given** serialization fails mid-process
-
-**When** serialization terminates
-
-**Then** the designated output file shall not exist or be modified
-**And** any temporary file shall be deleted
+Feature: TreeStream Serialization and Reconstruction
+  TreeStream deterministically serializes a directory tree to a single UTF-8 file
+  and reconstructs it byte-for-byte. All behaviour is deterministic and error
+  conditions terminate with a defined error code.
+
+  # ---------------------------------------------------------------------------
+  # SERIALIZATION — HAPPY PATH
+  # ---------------------------------------------------------------------------
+
+  Scenario: S01 — Basic round-trip integrity
+    Given a root directory containing "a.txt" with content "Hello"
+    When the directory is serialized
+    And the output is reconstructed into a new target directory
+    Then the target contains "a.txt"
+    And the content of "a.txt" is byte-for-byte identical to the source
+
+  Scenario: S02 — Nested directory structure
+    Given a root directory containing
+      | path                |
+      | docs/readme.txt     |
+      | docs/sub/notes.txt  |
+    When the directory is serialized
+    And the output is reconstructed into a new target directory
+    Then the reconstructed directory hierarchy is identical to the source
+    And all file contents are byte-for-byte identical to their sources
+
+  Scenario: S03 — Empty file handling
+    Given a root directory containing "empty.txt" with zero bytes
+    When the directory is serialized
+    Then the record for "empty.txt" contains CONTENT_BYTES: 0
+    And reconstruction recreates "empty.txt" as a zero-byte file
+
+  Scenario: S04 — CRLF preservation
+    Given a root directory containing "crlf.txt" whose bytes include CR LF sequences
+    When the directory is serialized
+    Then the serialized content block preserves the exact byte sequence including CR LF
+    And reconstruction reproduces bytes identical to the source file
+
+  Scenario: S05 — Deterministic ordering
+    Given a root directory containing
+      | path   |
+      | b.txt  |
+      | a.txt  |
+      | aa.txt |
+    When the directory is serialized twice in succession without modification
+    Then records in each output are sorted by case-sensitive ordinal Unicode code-point comparison on PATH
+    And the two output files are byte-for-byte identical
+
+  Scenario: S06 — Empty root directory
+    Given a root directory containing no files or subdirectories
+    When the directory is serialized
+    Then the output file contains only the global header and the EOF marker
+    And reconstruction of that output produces an empty target directory
+
+  Scenario: S07 — Non-existent target directory is created
+    Given a serialized file representing a valid directory tree
+    And the target directory path does not exist on the filesystem
+    When reconstruction is attempted
+    Then the system creates the target directory including any necessary parent directories
+    And reconstruction completes successfully with all files written correctly
+
+  # ---------------------------------------------------------------------------
+  # SERIALIZATION — ERROR CONDITIONS
+  # ---------------------------------------------------------------------------
+
+  Scenario: S08 — File content contains bytes invalid under UTF-8 strict decoding
+    Given a root directory containing "binary.bin" whose content is not valid UTF-8
+    When serialization is attempted
+    Then serialization terminates with error code E4
+
+  Scenario: S09 — Symlink or junction encountered
+    Given a root directory containing a symlink or NTFS junction point
+    When serialization is attempted
+    Then serialization terminates with error code E5
+
+  Scenario: S10 — Atomic output on serialization failure with no pre-existing output file
+    Given a root directory that will cause serialization to fail mid-process
+    And no output file exists at the designated path prior to serialization
+    When serialization terminates with an error
+    Then the designated output file does not exist
+    And any temporary working file has been deleted
+
+  Scenario: S11 — Atomic output on serialization failure with pre-existing output file
+    Given a root directory that will cause serialization to fail mid-process
+    And an output file already exists at the designated path prior to serialization
+    When serialization terminates with an error
+    Then the pre-existing output file is byte-for-byte identical to its state before serialization began
+    And any temporary working file has been deleted
+
+  # ---------------------------------------------------------------------------
+  # RECONSTRUCTION — ERROR CONDITIONS
+  # ---------------------------------------------------------------------------
+
+  Scenario: S12 — Incorrect SPEC_VERSION in header
+    Given a serialized file whose SPEC_VERSION does not match the supported version
+    When reconstruction is attempted
+    Then reconstruction terminates with error code E7
+
+  Scenario: S13 — CONTENT_BYTES mismatch
+    Given a serialized file where CONTENT_BYTES for a record does not match the actual byte length of its content block
+    When reconstruction is attempted
+    Then reconstruction terminates with error code E8
+
+  Scenario: S14 — Missing EOF marker
+    Given a serialized file that is truncated before the EOF marker
+    When reconstruction is attempted
+    Then reconstruction terminates with error code E8
+
+  Scenario: S15 — Trailing bytes after final record
+    Given a serialized file that contains additional bytes after the final END_FILE line
+    When reconstruction is attempted
+    Then reconstruction terminates with error code E6
+
+  Scenario: S16 — Path traversal via ".." component
+    Given a serialized file containing a PATH value with a ".." component
+    When reconstruction is attempted
+    Then reconstruction terminates with error code E9
+
+  Scenario: S17 — Case-insensitive path collision
+    Given a serialized file containing records for both "File.txt" and "file.txt"
+    When reconstruction is attempted
+    Then reconstruction terminates with error code E9
+
+  Scenario: S18 — Overwrite prohibited
+    Given a target directory already containing "a.txt"
+    And overwrite mode is disabled
+    And the serialized file contains a record for "a.txt"
+    When reconstruction is attempted
+    Then reconstruction terminates with error code E11
+
+  Scenario: S19 — Target directory cannot be created
+    Given a target directory path whose parent is not writable due to permission restrictions
+    When reconstruction is attempted
+    Then reconstruction terminates with error code E10
