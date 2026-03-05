@@ -352,6 +352,20 @@ If any structural deviation is detected, reconstruction shall terminate
 with an explicit error.
 After the terminating LF of the final END_FILE line, the parser shall confirm that the end of the Serialized File has been reached. Any additional bytes present after the final record shall be treated as a structural error and reconstruction shall terminate with E6.
 
+Implementation note (normative)
+
+The PATH metadata line shall match exactly the form:
+
+PATH: <relative_path>
+
+The prefix must be exactly "PATH: " (colon followed by one space).
+
+The extracted value must:
+- not be empty
+- contain no leading or trailing whitespace
+
+If the PATH metadata line does not conform exactly to this format, reconstruction shall terminate with error E6 (Invalid Serialized File Structure).
+
 ### 6.4 Path Validation (Windows Semantics)
 
 For each `PATH` value:
@@ -392,6 +406,19 @@ rejected.
 
 Path length behaviour is governed by the Windows environment.\
 Failures due to path length limitations shall surface as E10.
+
+Implementation note (normative)
+
+PATH validation shall be performed on the raw PATH string from the Serialized File before constructing any path object that may normalize or remove segments.
+
+The PATH value shall be split on "/" and each component validated.
+
+The path shall be rejected with error E9 if any component is:
+- "."
+- ".."
+- an empty string (which indicates a leading "/", trailing "/", or a double slash "//")
+
+Backslashes "\" are not permitted in PATH values in the Serialized File and shall cause rejection with error E9.
 
 ## 7. Error Handling
 
