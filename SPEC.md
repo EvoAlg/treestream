@@ -420,6 +420,10 @@ The path shall be rejected with error E9 if any component is:
 
 Backslashes "\" are not permitted in PATH values in the Serialized File and shall cause rejection with error E9.
 
+Implementation note (normative)
+
+If multiple validation rules could apply to the same input record set, the implementation shall prioritize PATH validity checks under Section 6.4 (including case-insensitive PATH collision detection) ahead of any record ordering validation. If a case-insensitive PATH collision exists anywhere in the Serialized File, reconstruction shall terminate with error E9 even if the file is otherwise structurally invalid with respect to record ordering.
+
 ## 7. Error Handling
 
 ### 7.1 General Principles
