@@ -51,23 +51,25 @@ def parse_content_bytes_field(raw_value: bytes, operation: str) -> int:
 def validate_serialized_path(path_value: str, target_abs: Path, operation: str) -> Path:
     if path_value == "":
         raise TreeStreamError("E9", operation, "PATH cannot be empty")
+
+    raw_components = path_value.split("/")
+    for component in raw_components:
+        if component == "":
+            raise TreeStreamError("E9", operation, "PATH has empty component", path=path_value)
+        if component in (".", ".."):
+            raise TreeStreamError("E9", operation, "PATH contains traversal segment", path=path_value)
+
     if "\\" in path_value:
         raise TreeStreamError("E9", operation, "PATH must use forward slashes", path=path_value)
-    if path_value.startswith("/") or path_value.startswith("\\"):
-        raise TreeStreamError("E9", operation, "PATH must be relative", path=path_value)
     if ":" in path_value:
         raise TreeStreamError("E9", operation, "PATH must not contain ':'", path=path_value)
-    if "//" in path_value:
-        raise TreeStreamError("E9", operation, "PATH has empty component", path=path_value)
 
     p = PureWindowsPath(path_value)
     parts = p.parts
     if not parts:
         raise TreeStreamError("E9", operation, "PATH cannot be empty", path=path_value)
 
-    for component in parts:
-        if component in (".", ".."):
-            raise TreeStreamError("E9", operation, "PATH contains traversal segment", path=path_value)
+    for component in raw_components:
         if component.endswith(" ") or component.endswith("."):
             raise TreeStreamError("E9", operation, "PATH component ends with space/dot", path=path_value)
         if any(ch in INVALID_COMPONENT_CHARS for ch in component):

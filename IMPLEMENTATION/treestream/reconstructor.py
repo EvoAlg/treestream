@@ -54,7 +54,15 @@ def _parse_record_header(handle) -> tuple[str, int]:
     path_line = parse_line_strict_lf(handle, op, eof_code="E6")
     if not path_line.startswith(b"PATH: "):
         raise TreeStreamError("E6", op, "invalid record structure: malformed PATH line")
-    path_value = path_line[len(b"PATH: ") :].decode("utf-8", errors="strict")
+    if path_line == b"PATH: ":
+        raise TreeStreamError("E6", op, "invalid record structure: empty PATH value")
+    raw_path_value = path_line[len(b"PATH: ") :]
+    if raw_path_value == b"":
+        raise TreeStreamError("E6", op, "invalid record structure: empty PATH value")
+
+    path_value = raw_path_value.decode("utf-8", errors="strict")
+    if path_value != path_value.strip():
+        raise TreeStreamError("E6", op, "invalid record structure: PATH value has surrounding whitespace")
 
     length_line = parse_line_strict_lf(handle, op, eof_code="E6")
     if not length_line.startswith(b"CONTENT_BYTES: "):
@@ -102,14 +110,14 @@ def reconstruct(
 
                 path_value, content_bytes = _parse_record_header(handle)
 
-                if previous_path is not None and path_value < previous_path:
-                    raise TreeStreamError("E6", "reconstruction", "records are not sorted by PATH")
-                previous_path = path_value
-
                 folded = path_value.casefold()
                 if folded in seen_casefold:
                     raise TreeStreamError("E9", "reconstruction", "case-insensitive PATH collision", path_value)
                 seen_casefold.add(folded)
+
+                if previous_path is not None and path_value < previous_path:
+                    raise TreeStreamError("E6", "reconstruction", "records are not sorted by PATH")
+                previous_path = path_value
 
                 dst_path = validate_serialized_path(path_value, target_abs, "reconstruction")
 

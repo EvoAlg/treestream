@@ -1,72 +1,76 @@
-﻿SUMMARY
-The implementation partially conforms to SPEC.md v0.1.9. Core serialization/reconstruction behavior is largely aligned, including deterministic ordering, LF structural markers, temp-file output replacement, and explicit error signaling. However, there are conformance-breaking issues in reconstruction path validation and record-header whitespace enforcement.
+SUMMARY
+
+Implementation is close to SPEC.md v0.1.9, but it does not fully conform.
+
+Most requirements are implemented correctly (header format, LF structural parsing, length-prefixed records, bounded chunked I/O, temp-file atomic replace, overwrite handling, Windows path validation, and version pinning). One major non-conformance remains in reconstruction error classification/validation ordering for case-insensitive PATH collisions.
+
+Observed behavior (executed):
+- `fixtures/errors_v0.1.9/recon_E9_case_collision.treestream` fails with `E6 reconstruction: records are not sorted by PATH`.
+- SPEC requires this condition to be rejected as E9 (invalid path collision).
 
 CONFORMANCE CHECK
-- Functional Requirements
-  - FR1: PASS
-  - FR2: PASS
-  - FR3: PASS
-  - FR4: PASS
-  - FR5: PASS
-  - FR6: PASS
-  - FR7: PASS
-  - FR8: PASS
-  - FR9: PASS
-  - FR10: PASS
-  - FR11: PASS
-  - FR12: PASS (subject to issues below on malformed serialized inputs)
 
-- Non-Functional Requirements
-  - NFR1: PASS
-  - NFR2: PASS
-  - NFR3: PASS
-  - NFR4: PASS
-  - NFR5: PASS
-  - NFR6: PASS
-  - NFR7: PASS
-  - NFR8: PASS
-  - NFR9: PASS
-  - NFR10: PASS
-  - NFR11: PASS
-  - NFR12: PASS
-  - NFR13: PASS
+Functional Requirements
+- FR1 Root Directory Input: PASS
+- FR2 Recursive Traversal: PASS
+- FR3 Text File Inclusion: PASS
+- FR4 Relative Path Preservation: PASS
+- FR5 Exact Content Preservation: PASS
+- FR6 Deterministic Ordering: PASS
+- FR7 Single Serialized File Output: PASS
+- FR8 Reconstruction Input: PASS
+- FR9 Directory Structure Reconstruction: PASS
+- FR10 File Content Reconstruction: PASS
+- FR11 Overwrite Behaviour: PASS
+- FR12 Round-Trip Integrity: PASS (by implementation logic; not execution-verified here)
 
-- Serialization Format
-  - Header format and ordering (Section 5.4): PASS
-  - Record structure and length-prefixed content parsing (Section 5.5): PARTIAL (PATH metadata whitespace not strictly enforced)
-  - Deterministic record ordering (Section 5.6): PASS
-  - Whitespace/blank-line strictness (Section 5.7): PARTIAL (PATH line allows additional leading/trailing whitespace in value)
+Non-Functional Requirements
+- NFR1 Determinism: PASS
+- NFR2 Encoding Standard (UTF-8, no BOM): PASS
+- NFR3 Target Platform (Windows): PASS
+- NFR4 Windows Filesystem Semantics: PASS
+- NFR5 Path Normalisation (/ separators): PASS
+- NFR6 No Source Modification: PASS
+- NFR7 Error Transparency: PASS
+- NFR8 Predictable Failure Behaviour: PASS
+- NFR9 Standard Library Constraint: PASS
+- NFR10 Resource Predictability (bounded buffering): PASS
+- NFR11 Human Readability: PASS
+- NFR12 Scope Limitation: PASS
+- NFR13 Version Traceability: PASS
 
-- Reconstruction Rules
-  - Header validation (Section 6.2): PASS
-  - Record parsing by CONTENT_BYTES, no marker scanning (Section 6.3): PASS
-  - Path validation under Windows semantics (Section 6.4): FAIL (dot-segment rejection is incomplete)
+Serialization Format
+- Section 5 header and record layout: PASS
+- Section 5.2 LF structural newlines and binary mode: PASS
+- Section 5.5 length-prefixed content parsing/writing: PASS
+- Section 5.6 deterministic path ordering in serializer: PASS
 
-- Error Handling
-  - Serialization errors E1/E2/E4/E5 and temp-file behavior: PASS
-  - Reconstruction errors E6/E7/E8/E9/E10/E11 mapping: PARTIAL (invalid path forms with dot segments can bypass E9)
+Reconstruction Rules
+- Section 6.2 header validation: PASS
+- Section 6.3 structural parsing (including explicit separator handling): PASS
+- Section 6.4 path validation and escape prevention: FAIL (case-collision condition not emitted as required E9 in a valid collision scenario when records are unsorted)
 
-- Determinism
-  - Deterministic ordering/output and deterministic parsing stages: PASS
+Error Handling
+- Section 7.2 serialization E-code behavior: PASS
+- Section 7.3 reconstruction E-code behavior: FAIL (E9 case-collision condition is preempted by E6 ordering check)
+
+Determinism
+- Section 8 deterministic traversal/header/content handling: PASS
+- Section 8.5 deterministic failure stage: PASS
 
 DETECTED ISSUES
-1. Severity: Major
-   Specification section: 6.4 Path Validation (Windows Semantics), 5.3 Path Canonicalisation
-   Explanation:
-   - Spec quote (6.4): "The path shall not contain `.` or `..` path segments."
-   - Spec quote (5.3): "Relative Paths shall not ... contain `.` or `..` segments."
-   - In [format.py](/C:/Users/edwar/OneDrive/Documents/Programming/TreeStream/IMPLEMENTATION/treestream/format.py#L63), `PureWindowsPath(path_value).parts` is computed before checking for `.` segments. `PureWindowsPath` normalizes `.` away, so inputs like `a/./b.txt`, `./x`, and `a/.` are accepted instead of rejected with E9.
-   Suggested correction:
-   - Validate raw slash-delimited components from the original `path_value` string (e.g., `path_value.split('/')`) before creating `PureWindowsPath`, and reject any component exactly `.` or `..`.
 
-2. Severity: Major
-   Specification section: 5.5 File Entry Record Format, 5.7 Whitespace and Blank Lines, 6.3 Record Parsing
-   Explanation:
-   - Spec quote (5.5): "No additional leading or trailing whitespace is permitted on these lines."
-   - Spec quote (5.7): "All marker lines ... shall appear exactly as specified with no leading or trailing whitespace."
-   - In [reconstructor.py](/C:/Users/edwar/OneDrive/Documents/Programming/TreeStream/IMPLEMENTATION/treestream/reconstructor.py#L54), PATH parsing only checks `startswith(b"PATH: ")` and then accepts the rest verbatim. A structurally invalid metadata line like `PATH:  file.txt` (extra space after separator) is not rejected at parse time and can pass downstream validation.
-   Suggested correction:
-   - Enforce exact metadata-line grammar for PATH: exactly one separator space and no additional leading/trailing whitespace in the value portion.
+1) Severity: Major
+Specification section: 6.4 (Path Validation), 7.3 (E9), 7.1 (explicit condition alignment)
+Explanation:
+- Spec quote (Section 6.4): "The Serialized File shall be rejected if it contains two or more PATH values that are identical under case-insensitive Unicode comparison."
+- Spec quote (Section 7.3): "E9 --- Invalid Path ... violates Windows filesystem rules."
+- In `IMPLEMENTATION/treestream/reconstructor.py`, ordering is validated before collision detection (`lines 111-113` before `lines 115-118`).
+- Result: input with colliding paths can fail as E6 (`records are not sorted by PATH`) instead of E9. Confirmed with `fixtures/errors_v0.1.9/recon_E9_case_collision.treestream`.
+Suggested correction:
+- Validate/path-classify PATH collision (and other E9 path invalidity) before enforcing optional ordering checks, or remove reconstruction-side sorted-order rejection entirely and rely on Section 6 parsing/path rules plus E9 classification.
+- Ensure collision-triggering inputs consistently emit E9.
 
 FINAL VERDICT
+
 FAIL
