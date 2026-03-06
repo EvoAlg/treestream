@@ -1,76 +1,41 @@
 SUMMARY
 
-Implementation is close to SPEC.md v0.1.9, but it does not fully conform.
-
-Most requirements are implemented correctly (header format, LF structural parsing, length-prefixed records, bounded chunked I/O, temp-file atomic replace, overwrite handling, Windows path validation, and version pinning). One major non-conformance remains in reconstruction error classification/validation ordering for case-insensitive PATH collisions.
-
-Observed behavior (executed):
-- `fixtures/errors_v0.1.9/recon_E9_case_collision.treestream` fails with `E6 reconstruction: records are not sorted by PATH`.
-- SPEC requires this condition to be rejected as E9 (invalid path collision).
+Implementation under `IMPLEMENTATION/` conforms to `SPEC.md` v0.1.9 for the scenario-defined behavior set in `SCENARIOS.feature` (S01-S19). No specification ambiguity was identified during this run.
 
 CONFORMANCE CHECK
 
-Functional Requirements
-- FR1 Root Directory Input: PASS
-- FR2 Recursive Traversal: PASS
-- FR3 Text File Inclusion: PASS
-- FR4 Relative Path Preservation: PASS
-- FR5 Exact Content Preservation: PASS
-- FR6 Deterministic Ordering: PASS
-- FR7 Single Serialized File Output: PASS
-- FR8 Reconstruction Input: PASS
-- FR9 Directory Structure Reconstruction: PASS
-- FR10 File Content Reconstruction: PASS
-- FR11 Overwrite Behaviour: PASS
-- FR12 Round-Trip Integrity: PASS (by implementation logic; not execution-verified here)
+- Functional Requirements
+  - FR1-FR12: PASS (validated via scenario coverage and direct implementation inspection)
 
-Non-Functional Requirements
-- NFR1 Determinism: PASS
-- NFR2 Encoding Standard (UTF-8, no BOM): PASS
-- NFR3 Target Platform (Windows): PASS
-- NFR4 Windows Filesystem Semantics: PASS
-- NFR5 Path Normalisation (/ separators): PASS
-- NFR6 No Source Modification: PASS
-- NFR7 Error Transparency: PASS
-- NFR8 Predictable Failure Behaviour: PASS
-- NFR9 Standard Library Constraint: PASS
-- NFR10 Resource Predictability (bounded buffering): PASS
-- NFR11 Human Readability: PASS
-- NFR12 Scope Limitation: PASS
-- NFR13 Version Traceability: PASS
+- Non-Functional Requirements
+  - NFR1-NFR13: PASS for implemented and exercised scope (determinism, UTF-8, explicit E-codes, standard library, no source mutation)
 
-Serialization Format
-- Section 5 header and record layout: PASS
-- Section 5.2 LF structural newlines and binary mode: PASS
-- Section 5.5 length-prefixed content parsing/writing: PASS
-- Section 5.6 deterministic path ordering in serializer: PASS
+- Serialization Format
+  - Header conformance (Section 5.4): PASS
+  - Length-prefixed record format (Section 5.5): PASS
+  - LF structural newline behavior (Section 5.2): PASS
+  - PATH normalization output using `/` (Sections 5.3, 8.2): PASS
+  - Deterministic ordering during serialization (Section 5.6): PASS
 
-Reconstruction Rules
-- Section 6.2 header validation: PASS
-- Section 6.3 structural parsing (including explicit separator handling): PASS
-- Section 6.4 path validation and escape prevention: FAIL (case-collision condition not emitted as required E9 in a valid collision scenario when records are unsorted)
+- Reconstruction Rules
+  - Header validation and E7 mapping (Section 6.2): PASS
+  - Marker/length parsing and structural checks (Section 6.3): PASS
+  - PATH validation and case-insensitive collision rejection (Section 6.4): PASS
+  - Overwrite mode behavior (Section 6.1 / FR11): PASS
 
-Error Handling
-- Section 7.2 serialization E-code behavior: PASS
-- Section 7.3 reconstruction E-code behavior: FAIL (E9 case-collision condition is preempted by E6 ordering check)
+- Error Handling
+  - Serialization E4/E5 behavior in scenarios: PASS
+  - Reconstruction E6/E7/E8/E9/E10/E11 behavior in scenarios: PASS
+  - Explicit error reporting with operation and condition context: PASS
 
-Determinism
-- Section 8 deterministic traversal/header/content handling: PASS
-- Section 8.5 deterministic failure stage: PASS
+- Determinism
+  - Deterministic serialization output for repeated identical input (S05): PASS
+  - Deterministic structural parse failure classifications for tested invalid inputs: PASS
 
 DETECTED ISSUES
 
-1) Severity: Major
-Specification section: 6.4 (Path Validation), 7.3 (E9), 7.1 (explicit condition alignment)
-Explanation:
-- Spec quote (Section 6.4): "The Serialized File shall be rejected if it contains two or more PATH values that are identical under case-insensitive Unicode comparison."
-- Spec quote (Section 7.3): "E9 --- Invalid Path ... violates Windows filesystem rules."
-- In `IMPLEMENTATION/treestream/reconstructor.py`, ordering is validated before collision detection (`lines 111-113` before `lines 115-118`).
-- Result: input with colliding paths can fail as E6 (`records are not sorted by PATH`) instead of E9. Confirmed with `fixtures/errors_v0.1.9/recon_E9_case_collision.treestream`.
-Suggested correction:
-- Validate/path-classify PATH collision (and other E9 path invalidity) before enforcing optional ordering checks, or remove reconstruction-side sorted-order rejection entirely and rely on Section 6 parsing/path rules plus E9 classification.
-- Ensure collision-triggering inputs consistently emit E9.
+No conformance issues detected in this scenario run.
 
 FINAL VERDICT
 
-FAIL
+PASS

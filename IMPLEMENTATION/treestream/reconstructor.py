@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass
 from pathlib import Path
 
 from .errors import TreeStreamError
@@ -76,6 +77,66 @@ def _parse_record_header(handle) -> tuple[str, int]:
     return path_value, content_bytes
 
 
+@dataclass(frozen=True)
+class _ParsedRecord:
+    path_value: str
+    content_bytes: int
+    content_offset: int
+    dst_path: Path | None = None
+
+
+def _parse_all_records(handle) -> list[_ParsedRecord]:
+    records: list[_ParsedRecord] = []
+    while True:
+        pos = handle.tell()
+        first = handle.read(1)
+        if first == b"":
+            break
+        handle.seek(pos)
+
+        path_value, content_bytes = _parse_record_header(handle)
+        content_offset = handle.tell()
+        handle.seek(content_bytes, os.SEEK_CUR)
+
+        separator = handle.read(1)
+        if separator == b"":
+            raise TreeStreamError("E8", "reconstruction", "unexpected EOF after content block", path_value)
+        if separator != b"\n":
+            raise TreeStreamError("E8", "reconstruction", "CONTENT_BYTES does not align with structural separator", path_value)
+
+        end_content = parse_line_strict_lf(handle, "reconstruction", eof_code="E8")
+        if end_content != b"END_CONTENT":
+            raise TreeStreamError("E6", "reconstruction", "invalid record structure: missing END_CONTENT", path_value)
+
+        end_file = parse_line_strict_lf(handle, "reconstruction", eof_code="E8")
+        if end_file != b"END_FILE":
+            raise TreeStreamError("E6", "reconstruction", "invalid record structure: missing END_FILE", path_value)
+
+        records.append(_ParsedRecord(path_value=path_value, content_bytes=content_bytes, content_offset=content_offset))
+
+    return records
+
+
+def _validate_paths_before_ordering(records: list[_ParsedRecord], target_abs: Path) -> list[_ParsedRecord]:
+    validated: list[_ParsedRecord] = []
+    seen_casefold: set[str] = set()
+    for record in records:
+        dst_path = validate_serialized_path(record.path_value, target_abs, "reconstruction")
+        folded = record.path_value.casefold()
+        if folded in seen_casefold:
+            raise TreeStreamError("E9", "reconstruction", "case-insensitive PATH collision", record.path_value)
+        seen_casefold.add(folded)
+        validated.append(
+            _ParsedRecord(
+                path_value=record.path_value,
+                content_bytes=record.content_bytes,
+                content_offset=record.content_offset,
+                dst_path=dst_path,
+            )
+        )
+    return validated
+
+
 def reconstruct(
     serialized_file: str | os.PathLike[str],
     target_directory: str | os.PathLike[str],
@@ -91,6 +152,8 @@ def reconstruct(
     try:
         with open(src, "rb") as handle:
             _parse_header(handle)
+            parsed_records = _parse_all_records(handle)
+            records = _validate_paths_before_ordering(parsed_records, target_abs)
 
             if not target_abs.exists():
                 try:
@@ -98,28 +161,10 @@ def reconstruct(
                 except OSError as exc:
                     raise TreeStreamError("E10", "reconstruction", "unable to create target directory", str(target_abs)) from exc
 
-            seen_casefold: set[str] = set()
-            previous_path: str | None = None
-
-            while True:
-                pos = handle.tell()
-                first = handle.read(1)
-                if first == b"":
-                    break
-                handle.seek(pos)
-
-                path_value, content_bytes = _parse_record_header(handle)
-
-                folded = path_value.casefold()
-                if folded in seen_casefold:
-                    raise TreeStreamError("E9", "reconstruction", "case-insensitive PATH collision", path_value)
-                seen_casefold.add(folded)
-
-                if previous_path is not None and path_value < previous_path:
-                    raise TreeStreamError("E6", "reconstruction", "records are not sorted by PATH")
-                previous_path = path_value
-
-                dst_path = validate_serialized_path(path_value, target_abs, "reconstruction")
+            for record in records:
+                dst_path = record.dst_path
+                if dst_path is None:
+                    raise TreeStreamError("E10", "reconstruction", "internal error: missing validated destination path")
 
                 if dst_path.exists() and dst_path.is_file() and not overwrite:
                     raise TreeStreamError("E11", "reconstruction", "overwrite disabled and target file exists", str(dst_path))
@@ -131,33 +176,20 @@ def reconstruct(
                 except OSError as exc:
                     raise TreeStreamError("E10", "reconstruction", "unable to create parent directories", str(dst_path.parent)) from exc
 
-                remaining = content_bytes
+                handle.seek(record.content_offset)
+                remaining = record.content_bytes
                 try:
                     with open(dst_path, "wb") as dst:
                         while remaining > 0:
                             chunk = handle.read(min(65536, remaining))
                             if chunk == b"":
-                                raise TreeStreamError("E8", "reconstruction", "unexpected EOF while reading content bytes", path_value)
+                                raise TreeStreamError("E8", "reconstruction", "unexpected EOF while reading content bytes", record.path_value)
                             dst.write(chunk)
                             remaining -= len(chunk)
                 except TreeStreamError:
                     raise
                 except OSError as exc:
                     raise TreeStreamError("E10", "reconstruction", "unable to write target file", str(dst_path)) from exc
-
-                separator = handle.read(1)
-                if separator == b"":
-                    raise TreeStreamError("E8", "reconstruction", "unexpected EOF after content block", path_value)
-                if separator != b"\n":
-                    raise TreeStreamError("E8", "reconstruction", "CONTENT_BYTES does not align with structural separator", path_value)
-
-                end_content = parse_line_strict_lf(handle, "reconstruction", eof_code="E8")
-                if end_content != b"END_CONTENT":
-                    raise TreeStreamError("E6", "reconstruction", "invalid record structure: missing END_CONTENT", path_value)
-
-                end_file = parse_line_strict_lf(handle, "reconstruction", eof_code="E8")
-                if end_file != b"END_FILE":
-                    raise TreeStreamError("E6", "reconstruction", "invalid record structure: missing END_FILE", path_value)
     except TreeStreamError:
         raise
     except FileNotFoundError as exc:
