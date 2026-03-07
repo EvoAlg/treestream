@@ -3,7 +3,7 @@
 Version pin: **v0.1.9**
 
 This document defines the **mandatory acceptance gates** for TreeStream against **SPEC.md v0.1.9**.  
-**All five gates (A–E) must pass. Any single gate failing is an overall FAIL.**  
+**All six gates (A–F) must pass. Any single gate failing is an overall FAIL.**  
 A reviewer must be able to verify each gate **using only the repository contents and local execution results**, without needing any knowledge of the generation process.
 
 ---
@@ -257,6 +257,40 @@ Any of the following:
 
 ---
 
+## Gate F — CRLF Tolerance for Reconstruction Input
+
+**Objective:**  
+Validate the core transport workflow where serialized plain text is passed through channels (email body or clipboard) that may convert structural newlines from LF to CRLF.
+
+### Verification procedure (must be followed exactly)
+
+1. Start with a valid LF-only serialized file produced by TreeStream.
+2. Create a CRLF-variant of that payload that changes only structural line endings from LF to CRLF.
+   - Content bytes inside each `BEGIN_CONTENT`/`END_CONTENT` block must remain unchanged.
+3. Reconstruct from both inputs:
+   - Original LF payload
+   - CRLF-variant payload
+4. Compare reconstructed directory trees:
+   - Identical relative path set
+   - Byte-for-byte identical file contents
+5. Re-serialize at least one reconstructed output and verify serialized structural newlines are LF-only.
+
+**Pass condition:**  
+- Reconstruction succeeds for both LF and CRLF structural-input variants.
+- The two reconstructed trees are byte-for-byte identical.
+- Serialization output remains LF-only.
+
+**Fail condition:**  
+Any reconstruction failure caused by CRLF structural input, any content/path mismatch between LF and CRLF reconstructions, or any serializer output containing structural CRLF.
+
+**Evidence to capture:**  
+- Commands/scripts used to generate CRLF-variant input.
+- Reconstruction outputs for LF and CRLF inputs.
+- Byte-level comparison result of reconstructed trees.
+- Verification output demonstrating LF-only structural newlines in serializer output.
+
+---
+
 ## Reviewer Notes (Gotchas and Audit Checks)
 
 ### Notes for Gate B (Determinism)
@@ -278,9 +312,14 @@ Any of the following:
 - Ensure the implementation does not "auto-recover" (e.g., skipping invalid entries) because the spec prohibits silent fallback.
 - The message must name the operation and identify the failing path/file when applicable; generic stack traces without an explicit TreeStream error classification are insufficient.
 
+### Notes for Gate F (CRLF Tolerance)
+- CRLF tolerance applies only to structural parsing in reconstruction input.
+- Content blocks are opaque bytes and must not be newline-normalized.
+- Validation should explicitly prove that serializer output is still LF-only after successful reconstruction.
+
 ---
 
 ## Acceptance Decision
 
-**ACCEPTED** only if Gates **A, B, C, D, and E** are all **PASS** with captured evidence.  
+**ACCEPTED** only if Gates **A, B, C, D, E, and F** are all **PASS** with captured evidence.  
 Otherwise: **REJECTED**.

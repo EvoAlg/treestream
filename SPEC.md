@@ -11,6 +11,10 @@ It converts a root directory containing text files into a single
 structured UTF-8 text representation that preserves relative paths and
 exact file contents.
 
+Its primary workflow is to serialize a directory into a `.treestream`
+file, transmit that serialized text as plain-text email or clipboard
+content, and reconstruct the directory on the receiving side.
+
 It also reconstructs the original directory structure and file contents
 from that structured text representation.
 
@@ -195,6 +199,13 @@ The Serialized File shall be read and written in binary mode such that
 newline translation does not occur, and each structural line ending in
 the format shall be a single LF byte (`0x0A`).
 
+Serialization output is always LF-only for all structural lines.
+
+For reconstruction input only, structural line endings encoded as CRLF
+(`\r\n`) shall be accepted and treated as LF for parsing and validation.
+This normalization applies only to structural delimiters and marker
+lines; content bytes remain opaque and are never newline-normalized.
+
 During serialization, any Windows-native CRLF (`\r\n`) line endings
 within source files shall be preserved exactly as bytes within the
 stored file content (see Section 5.5), meaning TreeStream shall not
@@ -315,6 +326,9 @@ If the Target Directory does not exist at the time reconstruction begins, the sy
 
 Before reconstruction begins, the system shall:
 
+-   Normalize accepted structural CRLF line terminators to logical LF
+    for header and marker validation.
+
 -   Validate that the Serialized File header conforms exactly to Section
     5.4.
 -   Validate that `TREESTREAM 1` is present and supported.
@@ -339,10 +353,13 @@ For each file record, the system shall:
     -   `END_CONTENT`
     -   `END_FILE`
 2.  Validate that `CONTENT_BYTES` is a non-negative integer.
-3.  Read exactly `CONTENT_BYTES` bytes following the single LF byte
-    terminating the `BEGIN_CONTENT` line.
-4.  Read and validate the single structural LF byte (`0x0A`) that
-    follows the content bytes.
+3.  Read exactly `CONTENT_BYTES` bytes following the structural newline
+    terminating the `BEGIN_CONTENT` line (LF, or accepted CRLF in
+    reconstruction input).
+4.  Read and validate the structural separator that follows the content
+    bytes as either:
+    - a single LF byte (`0x0A`), or
+    - a CRLF sequence (`0x0D 0x0A`) in reconstruction input.
 5.  Read the next line and confirm it is exactly `END_CONTENT`.
 6.  Read the next line and confirm it is exactly `END_FILE`.
 
@@ -350,7 +367,15 @@ The parser shall not search for marker strings within the content bytes.
 
 If any structural deviation is detected, reconstruction shall terminate
 with an explicit error.
-After the terminating LF of the final END_FILE line, the parser shall confirm that the end of the Serialized File has been reached. Any additional bytes present after the final record shall be treated as a structural error and reconstruction shall terminate with E6.
+After the terminating newline of the final END_FILE line (LF, or CRLF in accepted reconstruction input), the parser shall confirm that the end of the Serialized File has been reached. Any additional bytes present after the final record shall be treated as a structural error and reconstruction shall terminate with E6.
+
+Implementation note (normative)
+
+During reconstruction, structural parsing shall treat line terminators as
+logical LF, where each accepted CRLF sequence is normalized to LF before
+marker comparison and header/record validation. Standalone CR (`0x0D`)
+outside content bytes is invalid and shall terminate reconstruction with
+E6.
 
 Implementation note (normative)
 
@@ -471,7 +496,9 @@ The system shall terminate reconstruction with an explicit error if any
 of the following occur:
 
 **E6 --- Invalid Serialized File Structure**\
-The header or record structure does not conform exactly to Section 5.
+The header or record structure is invalid under Section 5 as applied by
+the reconstruction parser, including accepted structural CRLF-to-LF
+normalization rules.
 
 **E7 --- Header Mismatch**\
 The `TREESTREAM` version, `SPEC_VERSION`, or required header fields are
@@ -691,8 +718,10 @@ A graphical user interface is not required.
 
 ### 10.8 Network or External Service Integration
 
-Integration with email systems, cloud storage providers, remote APIs, or
-external services is not supported.
+Automated integration with email systems, cloud storage providers,
+remote APIs, or external services is not supported. Manual transmission
+of the serialized plain text (for example via email body or clipboard)
+is in scope.
 
 ### 10.9 Performance Optimisation Features
 

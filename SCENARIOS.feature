@@ -59,6 +59,20 @@ Feature: TreeStream Serialization and Reconstruction
     Then the system creates the target directory including any necessary parent directories
     And reconstruction completes successfully with all files written correctly
 
+  Scenario: S20 — Email body round-trip with CRLF-normalized structure
+    Given a root directory containing representative UTF-8 text files
+    When the directory is serialized to a ".treestream" text payload
+    And the payload is copied into a plain-text email body that normalizes structural line endings to CR LF
+    And the received email body text is reconstructed
+    Then reconstruction succeeds with byte-for-byte file content integrity
+    And any subsequent serialization output remains LF-only for structural lines
+
+  Scenario: S21 — Clipboard round-trip with CRLF structural input tolerance
+    Given a valid ".treestream" payload copied through a clipboard path that converts structural newlines to CR LF
+    When reconstruction is performed from the pasted plain text payload
+    Then reconstruction succeeds without requiring manual newline edits
+    And reconstructed files are byte-for-byte identical to the original source tree
+
   # ---------------------------------------------------------------------------
   # SERIALIZATION — ERROR CONDITIONS
   # ---------------------------------------------------------------------------
