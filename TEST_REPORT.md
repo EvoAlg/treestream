@@ -1,15 +1,14 @@
 # TreeStream Scenario Test Report
 
-- Date/time (local): 2026-03-06 06:58:09 +11:00
-- OS: Microsoft Windows 10.0.19045.6466
+- Date/time (local): 2026-03-07 21:03:31 +11:00
+- OS: Microsoft Windows NT 10.0.19045.0
 - Python: 3.12.1
 - Shell: PowerShell 5.1.19041.6456
 - Working directory: `C:\Users\edwar\OneDrive\Documents\Programming\TreeStream`
 
 ## Commands Executed
 
-- `python -m IMPLEMENTATION.treestream --version`
-- `python -` (inline scenario runner script executing S01-S19 against `IMPLEMENTATION/treestream`)
+- `python -` (inline scenario runner script executing S01-S21 against `IMPLEMENTATION/treestream`, plus standalone structural CR negative check)
 
 ## Scenario Results (`SCENARIOS.feature`)
 
@@ -32,11 +31,17 @@
 - S17: PASS (E9)
 - S18: PASS (E11)
 - S19: PASS (E10)
+- S20: PASS
+- S21: PASS
+
+## Additional CRLF Parser Negative Check
+
+- Structural standalone `CR` (outside content bytes): PASS (E6)
 
 ## Summary
 
-- Total scenarios: 19
-- Passed: 19
+- Total scenarios: 21
+- Passed: 21
 - Failed: 0
 - Skipped: 0
 

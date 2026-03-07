@@ -5,42 +5,42 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .errors import TreeStreamError
-from .format import assert_windows, parse_content_bytes_field, parse_line_strict_lf, validate_serialized_path
+from .format import assert_windows, parse_content_bytes_field, parse_line_normalized_lf, validate_serialized_path
 
 
 def _parse_header(handle) -> None:
     op = "reconstruction"
-    line1 = parse_line_strict_lf(handle, op, eof_code="E6")
+    line1 = parse_line_normalized_lf(handle, op, eof_code="E6")
     if line1.startswith(b"TREESTREAM ") and line1 != b"TREESTREAM 1":
         raise TreeStreamError("E7", op, "unsupported TREESTREAM version")
     if line1 != b"TREESTREAM 1":
         raise TreeStreamError("E6", op, "invalid header structure: missing TREESTREAM line")
 
-    line2 = parse_line_strict_lf(handle, op, eof_code="E6")
+    line2 = parse_line_normalized_lf(handle, op, eof_code="E6")
     if not line2.startswith(b"SPEC_VERSION: "):
         raise TreeStreamError("E6", op, "invalid header structure: SPEC_VERSION line malformed")
     if line2 != b"SPEC_VERSION: v0.1.9":
         raise TreeStreamError("E7", op, "unsupported SPEC_VERSION")
 
-    line3 = parse_line_strict_lf(handle, op, eof_code="E6")
+    line3 = parse_line_normalized_lf(handle, op, eof_code="E6")
     if not line3.startswith(b"ENCODING: "):
         raise TreeStreamError("E6", op, "invalid header structure: ENCODING line malformed")
     if line3 != b"ENCODING: UTF-8":
         raise TreeStreamError("E7", op, "unsupported ENCODING")
 
-    line4 = parse_line_strict_lf(handle, op, eof_code="E6")
+    line4 = parse_line_normalized_lf(handle, op, eof_code="E6")
     if not line4.startswith(b"NEWLINES: "):
         raise TreeStreamError("E6", op, "invalid header structure: NEWLINES line malformed")
     if line4 != b"NEWLINES: LF":
         raise TreeStreamError("E7", op, "unsupported NEWLINES value")
 
-    line5 = parse_line_strict_lf(handle, op, eof_code="E6")
+    line5 = parse_line_normalized_lf(handle, op, eof_code="E6")
     if not line5.startswith(b"RECORDS: "):
         raise TreeStreamError("E6", op, "invalid header structure: RECORDS line malformed")
     if line5 != b"RECORDS: FILE":
         raise TreeStreamError("E7", op, "unsupported RECORDS value")
 
-    line6 = parse_line_strict_lf(handle, op, eof_code="E6")
+    line6 = parse_line_normalized_lf(handle, op, eof_code="E6")
     if line6 != b"END_HEADER":
         raise TreeStreamError("E6", op, "invalid header structure: missing END_HEADER")
 
@@ -48,11 +48,11 @@ def _parse_header(handle) -> None:
 def _parse_record_header(handle) -> tuple[str, int]:
     op = "reconstruction"
 
-    marker = parse_line_strict_lf(handle, op, eof_code="E6")
+    marker = parse_line_normalized_lf(handle, op, eof_code="E6")
     if marker != b"FILE":
         raise TreeStreamError("E6", op, "invalid record structure: expected FILE marker")
 
-    path_line = parse_line_strict_lf(handle, op, eof_code="E6")
+    path_line = parse_line_normalized_lf(handle, op, eof_code="E6")
     if not path_line.startswith(b"PATH: "):
         raise TreeStreamError("E6", op, "invalid record structure: malformed PATH line")
     if path_line == b"PATH: ":
@@ -65,12 +65,12 @@ def _parse_record_header(handle) -> tuple[str, int]:
     if path_value != path_value.strip():
         raise TreeStreamError("E6", op, "invalid record structure: PATH value has surrounding whitespace")
 
-    length_line = parse_line_strict_lf(handle, op, eof_code="E6")
+    length_line = parse_line_normalized_lf(handle, op, eof_code="E6")
     if not length_line.startswith(b"CONTENT_BYTES: "):
         raise TreeStreamError("E6", op, "invalid record structure: malformed CONTENT_BYTES line")
     content_bytes = parse_content_bytes_field(length_line[len(b"CONTENT_BYTES: ") :], op)
 
-    begin = parse_line_strict_lf(handle, op, eof_code="E6")
+    begin = parse_line_normalized_lf(handle, op, eof_code="E6")
     if begin != b"BEGIN_CONTENT":
         raise TreeStreamError("E6", op, "invalid record structure: missing BEGIN_CONTENT")
 
@@ -101,14 +101,20 @@ def _parse_all_records(handle) -> list[_ParsedRecord]:
         separator = handle.read(1)
         if separator == b"":
             raise TreeStreamError("E8", "reconstruction", "unexpected EOF after content block", path_value)
-        if separator != b"\n":
+        if separator == b"\n":
+            pass
+        elif separator == b"\r":
+            next_byte = handle.read(1)
+            if next_byte != b"\n":
+                raise TreeStreamError("E6", "reconstruction", "standalone CR is invalid in structural input", path_value)
+        else:
             raise TreeStreamError("E8", "reconstruction", "CONTENT_BYTES does not align with structural separator", path_value)
 
-        end_content = parse_line_strict_lf(handle, "reconstruction", eof_code="E8")
+        end_content = parse_line_normalized_lf(handle, "reconstruction", eof_code="E8")
         if end_content != b"END_CONTENT":
             raise TreeStreamError("E6", "reconstruction", "invalid record structure: missing END_CONTENT", path_value)
 
-        end_file = parse_line_strict_lf(handle, "reconstruction", eof_code="E8")
+        end_file = parse_line_normalized_lf(handle, "reconstruction", eof_code="E8")
         if end_file != b"END_FILE":
             raise TreeStreamError("E6", "reconstruction", "invalid record structure: missing END_FILE", path_value)
 

@@ -40,6 +40,24 @@ def parse_line_strict_lf(handle, operation: str, eof_code: str = "E6") -> bytes:
     return line[:-1]
 
 
+def parse_line_normalized_lf(handle, operation: str, eof_code: str = "E6") -> bytes:
+    line = handle.readline()
+    if line == b"":
+        raise TreeStreamError(eof_code, operation, "unexpected EOF while reading structural line")
+    if not line.endswith(b"\n"):
+        raise TreeStreamError(eof_code, operation, "structural line missing LF terminator")
+
+    if line.endswith(b"\r\n"):
+        value = line[:-2]
+    else:
+        value = line[:-1]
+
+    if b"\r" in value:
+        raise TreeStreamError("E6", operation, "standalone CR is invalid in structural input")
+
+    return value
+
+
 def parse_content_bytes_field(raw_value: bytes, operation: str) -> int:
     if raw_value == b"0":
         return 0
