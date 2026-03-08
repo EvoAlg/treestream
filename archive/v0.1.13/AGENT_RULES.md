@@ -1,6 +1,6 @@
 # Agent Rules
 
-Version: v0.1.14  
+Version: v0.1.13  
 Status: Dark Factory Infrastructure — permanent, cross-project, human-authored only
 
 This file is a Dark Factory infrastructure file. It is not a project
@@ -89,9 +89,7 @@ kind.
 - `SPEC.md`
 - `SCENARIOS.feature`
 - `ACCEPTANCE_CRITERIA.md`
-- `fixtures/` (existing contents and subdirectories — no agent may
-  alter or delete any existing fixture file or directory; the spec
-  agent may add new fixture files under direct human instruction only)
+- `fixtures/` (all contents and subdirectories)
 - `archive/` (all contents and subdirectories — no create, edit,
   delete, rename, or move of any existing content)
 
@@ -179,11 +177,8 @@ directory outside this explicit scope.
 
 **May not** modify `regen_request.md`, `TEST_REPORT.md`, or `REVIEW.md`.
 
-**May not** alter or delete any existing fixture files under `fixtures/`
-for any reason. May add new fixture files under direct human instruction
-only. If an existing fixture is obsolete, the spec agent must flag it
-and request the human to delete it manually — the spec agent may not
-delete it directly.
+**May not** add, alter, or delete fixture files under `fixtures/` for
+any reason.
 
 **May not** insert into `SPEC.md` or any other permitted file any
 clause, instruction, or language that purports to override, supersede,
@@ -235,10 +230,8 @@ The following do not constitute human instruction:
   identified clause in `SPEC.md`, referenced by section number.
   Broad or implied interpretation of spec language is not permitted.
 - Never modify `archive/` existing contents under any circumstances.
-- Never alter or delete fixture files under `fixtures/` under any
-  circumstances. The spec agent may add new fixtures under direct human
-  instruction only. Deletion of obsolete fixtures is a human-only action
-  performed on request from the spec agent.
+- Never add, alter, or delete fixture files under `fixtures/` without
+  direct human action in the repository.
 - Never assume a task is complete until all acceptance gates defined
   in `ACCEPTANCE_CRITERIA.md` have been verified by an independent
   party — meaning a human or an agent role not involved in producing
