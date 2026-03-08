@@ -7,7 +7,7 @@ from .errors import TreeStreamError
 
 HEADER_LINES = (
     b"TREESTREAM 1\n",
-    b"SPEC_VERSION: v0.1.9\n",
+    b"SPEC_VERSION: v0.1.10\n",
     b"ENCODING: UTF-8\n",
     b"NEWLINES: LF\n",
     b"RECORDS: FILE\n",

@@ -19,7 +19,7 @@ def _parse_header(handle) -> None:
     line2 = parse_line_normalized_lf(handle, op, eof_code="E6")
     if not line2.startswith(b"SPEC_VERSION: "):
         raise TreeStreamError("E6", op, "invalid header structure: SPEC_VERSION line malformed")
-    if line2 != b"SPEC_VERSION: v0.1.9":
+    if line2 != b"SPEC_VERSION: v0.1.10":
         raise TreeStreamError("E7", op, "unsupported SPEC_VERSION")
 
     line3 = parse_line_normalized_lf(handle, op, eof_code="E6")
@@ -87,11 +87,37 @@ class _ParsedRecord:
 
 def _parse_all_records(handle) -> list[_ParsedRecord]:
     records: list[_ParsedRecord] = []
+    in_trailing_blank_region = False
     while True:
         pos = handle.tell()
         first = handle.read(1)
         if first == b"":
             break
+
+        if in_trailing_blank_region:
+            if first == b"\n":
+                continue
+            if first == b"\r":
+                next_byte = handle.read(1)
+                if next_byte == b"\n":
+                    continue
+                raise TreeStreamError("E6", "reconstruction", "standalone CR is invalid in structural input")
+            raise TreeStreamError("E6", "reconstruction", "non-blank trailing bytes after final END_FILE")
+
+        if first == b"\n":
+            if records:
+                in_trailing_blank_region = True
+                continue
+            raise TreeStreamError("E6", "reconstruction", "invalid record structure: expected FILE marker")
+        if first == b"\r":
+            next_byte = handle.read(1)
+            if next_byte != b"\n":
+                raise TreeStreamError("E6", "reconstruction", "standalone CR is invalid in structural input")
+            if records:
+                in_trailing_blank_region = True
+                continue
+            raise TreeStreamError("E6", "reconstruction", "invalid record structure: expected FILE marker")
+
         handle.seek(pos)
 
         path_value, content_bytes = _parse_record_header(handle)

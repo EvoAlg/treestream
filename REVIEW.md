@@ -1,40 +1,41 @@
 SUMMARY
 
-Implementation under `IMPLEMENTATION/` conforms to `SPEC.md` v0.1.9 for the scenario-defined behavior set in `SCENARIOS.feature` (S01-S19). No specification ambiguity was identified during this run.
+Implementation under `IMPLEMENTATION/` was rebuilt for `SPEC.md` v0.1.10 and validated against `SCENARIOS.feature` S01-S22 plus acceptance-gate-aligned checks from `ACCEPTANCE_CRITERIA.md`.
+
+Governance integrity reference: `AGENT_RULES.md` version `v0.1.14`.
 
 CONFORMANCE CHECK
 
-- Functional Requirements
-  - FR1-FR12: PASS (validated via scenario coverage and direct implementation inspection)
+- Functional requirements:
+  - FR1-FR12: PASS for exercised scenario scope.
 
-- Non-Functional Requirements
-  - NFR1-NFR13: PASS for implemented and exercised scope (determinism, UTF-8, explicit E-codes, standard library, no source mutation)
+- Serialization format (Section 5):
+  - Header version updated to `SPEC_VERSION: v0.1.10`: PASS
+  - LF-only serializer structural lines: PASS
+  - Deterministic record ordering and length-prefixed parsing behavior: PASS
 
-- Serialization Format
-  - Header conformance (Section 5.4): PASS
-  - Length-prefixed record format (Section 5.5): PASS
-  - LF structural newline behavior (Section 5.2): PASS
-  - PATH normalization output using `/` (Sections 5.3, 8.2): PASS
-  - Deterministic ordering during serialization (Section 5.6): PASS
+- Reconstruction rules (Section 6):
+  - Structural CRLF accepted and normalized for parsing: PASS
+  - Standalone structural CR rejected with E6: PASS
+  - Trailing blank lines after final `END_FILE` tolerated: PASS
+  - Non-blank trailing bytes after final record rejected with E6: PASS
+  - PATH validation and case-collision rejection: PASS
 
-- Reconstruction Rules
-  - Header validation and E7 mapping (Section 6.2): PASS
-  - Marker/length parsing and structural checks (Section 6.3): PASS
-  - PATH validation and case-insensitive collision rejection (Section 6.4): PASS
-  - Overwrite mode behavior (Section 6.1 / FR11): PASS
+- Error handling (Section 7):
+  - E4/E5 serialization scenarios: PASS
+  - E6/E7/E8/E9/E10/E11 reconstruction scenarios: PASS
 
-- Error Handling
-  - Serialization E4/E5 behavior in scenarios: PASS
-  - Reconstruction E6/E7/E8/E9/E10/E11 behavior in scenarios: PASS
-  - Explicit error reporting with operation and condition context: PASS
+- Determinism and round-trip checks (Section 8):
+  - Deterministic serialization hashes and binary compare: PASS
+  - Round-trip tree/byte equality on fixture: PASS
 
-- Determinism
-  - Deterministic serialization output for repeated identical input (S05): PASS
-  - Deterministic structural parse failure classifications for tested invalid inputs: PASS
+NOTES
+
+- Current `fixtures/errors/*` reconstruction fixtures still contain `SPEC_VERSION: v0.1.9` in-file headers; non-E7 v0.1.10 error-stage checks were validated using temporary v0.1.10-adjusted copies under `artifacts/` without modifying fixture source files.
 
 DETECTED ISSUES
 
-No conformance issues detected in this scenario run.
+No implementation defects detected in this run.
 
 FINAL VERDICT
 
