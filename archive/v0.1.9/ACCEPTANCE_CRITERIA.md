@@ -1,8 +1,8 @@
-# TreeStream Acceptance Criteria (SPEC v0.1.10)
+# TreeStream Acceptance Criteria (SPEC v0.1.9)
 
-Version pin: **v0.1.10**
+Version pin: **v0.1.9**
 
-This document defines the **mandatory acceptance gates** for TreeStream against **SPEC.md v0.1.10**.  
+This document defines the **mandatory acceptance gates** for TreeStream against **SPEC.md v0.1.9**.  
 **All six gates (A–F) must pass. Any single gate failing is an overall FAIL.**  
 A reviewer must be able to verify each gate **using only the repository contents and local execution results**, without needing any knowledge of the generation process.
 
@@ -34,7 +34,7 @@ For identical input directory trees, serialization must produce **byte-for-byte 
 
 The determinism fixture is a directory tree located at:
 
-`fixtures/determinism_v0.1.10/`
+`fixtures/determinism_v0.1.9/`
 
 It must exist in the repo and contain **at minimum** the following structure and content characteristics (the fixture contents must be committed and not altered during verification):
 
@@ -93,7 +93,7 @@ Reconstruction of a serialized directory must reproduce the original tree exactl
 
 The round-trip fixture is a directory tree located at:
 
-`fixtures/roundtrip_v0.1.10/`
+`fixtures/roundtrip_v0.1.9/`
 
 It must exist in the repo and contain **at minimum**:
 
@@ -110,7 +110,7 @@ The fixture contents must be **committed** and must not be altered during verifi
 ### Verification procedure (must be followed exactly)
 
 1. Serialize the fixture directory:
-   - Input: `fixtures/roundtrip_v0.1.10/`
+   - Input: `fixtures/roundtrip_v0.1.9/`
    - Output: `artifacts/roundtrip_source.treestream`
 
 2. Reconstruct into a fresh target directory:
@@ -138,17 +138,17 @@ Any missing file, extra file, path mismatch, or any byte-level content mismatch.
 
 ---
 
-## Gate D — Format Conformance to SPEC.md v0.1.10
+## Gate D — Format Conformance to SPEC.md v0.1.9
 
 **Objective:**  
-The serialized output format must conform **exactly** to `SPEC.md v0.1.10`, including header, record structure, declared content lengths, and structural LF usage.
+The serialized output format must conform **exactly** to `SPEC.md v0.1.9`, including header, record structure, declared content lengths, and structural LF usage.
 
 ### Header conformance checks
 
-A serialized file must begin with these exact header lines in order (LF line endings), matching `SPEC.md v0.1.10`:
+A serialized file must begin with these exact header lines in order (LF line endings), matching `SPEC.md v0.1.9`:
 
 - `TREESTREAM 1`
-- `SPEC_VERSION: v0.1.10`
+- `SPEC_VERSION: v0.1.9`
 - `ENCODING: UTF-8`
 - `NEWLINES: LF`
 - `RECORDS: FILE`
@@ -162,7 +162,7 @@ Header matches exactly, including:
 
 ### Record structure checks (each file record)
 
-Each record must follow the exact structure defined in `SPEC.md v0.1.10` Section 5.5:
+Each record must follow the exact structure defined in `SPEC.md v0.1.9` Section 5.5:
 
 1. `FILE`
 2. `PATH: <relative_path>`
@@ -176,7 +176,7 @@ Each record must follow the exact structure defined in `SPEC.md v0.1.10` Section
 Additional required checks:
 - Records appear sorted by `PATH` in ordinal Unicode code point order (case-sensitive) as a flat string.
 - No extra blank lines between records.
-- After the final `END_FILE` line terminator, trailing blank lines (LF or CRLF sequences only) shall be permitted and ignored. Any non-blank bytes after the final record shall cause rejection with E6.
+- After the final `END_FILE` line terminator, the file must end (no extra bytes).
 
 **Pass condition:**  
 A reviewer can validate, by inspection and/or a deterministic validator script, that:
@@ -197,14 +197,14 @@ Any deviation from the spec structure, markers, spacing, ordering, content lengt
   - Record marker order integrity
   - Content-length correctness
   - Correct ordering by PATH
-  - Trailing blank lines after final record are tolerated; non-blank trailing bytes are rejected with E6
+  - No trailing bytes after final record
 
 ---
 
 ## Gate E — Error Handling and E-Code Mapping to SPEC.md
 
 **Objective:**  
-Observed error behavior must map to the error codes and conditions defined in `SPEC.md v0.1.10`, and messages must be explicit.
+Observed error behavior must map to the error codes and conditions defined in `SPEC.md v0.1.9`, and messages must be explicit.
 
 ### Scope
 
@@ -220,7 +220,7 @@ This gate applies to both operations:
    - The required message elements (operation + path/file where applicable + condition)
 
 2. Verification must be performed using **predefined negative fixtures** committed in the repo under:
-- `fixtures/errors_v0.1.10/`
+- `fixtures/errors_v0.1.9/`
 
 Negative fixtures must be designed so the triggering condition is deterministic and reproducible.
 
@@ -270,24 +270,22 @@ Validate the core transport workflow where serialized plain text is passed throu
 3. Reconstruct from both inputs:
    - Original LF payload
    - CRLF-variant payload
-4. Create a trailing-blank-lines variant by appending one or more blank lines after the final `END_FILE` line of the LF payload.
-5. Reconstruct from the trailing-blank-lines variant and verify it succeeds.
-6. Compare all reconstructed directory trees:
+4. Compare reconstructed directory trees:
    - Identical relative path set
    - Byte-for-byte identical file contents
 5. Re-serialize at least one reconstructed output and verify serialized structural newlines are LF-only.
 
 **Pass condition:**  
-- Reconstruction succeeds for LF, CRLF structural-input, and trailing-blank-lines variants.
-- All reconstructed trees are byte-for-byte identical.
+- Reconstruction succeeds for both LF and CRLF structural-input variants.
+- The two reconstructed trees are byte-for-byte identical.
 - Serialization output remains LF-only.
 
 **Fail condition:**  
-Any reconstruction failure caused by CRLF structural input or trailing blank lines, any content/path mismatch between variants, or any serializer output containing structural CRLF.
+Any reconstruction failure caused by CRLF structural input, any content/path mismatch between LF and CRLF reconstructions, or any serializer output containing structural CRLF.
 
 **Evidence to capture:**  
-- Commands/scripts used to generate CRLF-variant and trailing-blank-lines-variant inputs.
-- Reconstruction outputs for all three input variants.
+- Commands/scripts used to generate CRLF-variant input.
+- Reconstruction outputs for LF and CRLF inputs.
 - Byte-level comparison result of reconstructed trees.
 - Verification output demonstrating LF-only structural newlines in serializer output.
 
@@ -302,7 +300,7 @@ Any reconstruction failure caused by CRLF structural input or trailing blank lin
 - Record ordering must be stable and derived from sorted `PATH` strings, not filesystem enumeration order.
 
 ### Notes for Gate C (Round-Trip Integrity)
-- The "non-trivial fixture" is **fixed** by this document: only `fixtures/roundtrip_v0.1.10/` is valid for Gate C.
+- The "non-trivial fixture" is **fixed** by this document: only `fixtures/roundtrip_v0.1.9/` is valid for Gate C.
 - Comparison must be byte-level for file contents (hashing per file is acceptable).
 - Ignore filesystem metadata; only paths and contents matter.
 - Ensure reconstruction does not create extra files beyond those in the serialized representation.

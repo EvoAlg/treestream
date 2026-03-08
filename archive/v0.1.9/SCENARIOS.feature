@@ -120,16 +120,10 @@ Feature: TreeStream Serialization and Reconstruction
     When reconstruction is attempted
     Then reconstruction terminates with error code E8
 
-  Scenario: S15 — Non-blank trailing bytes after final record
-    Given a serialized file that contains non-blank bytes after the final END_FILE line
+  Scenario: S15 — Trailing bytes after final record
+    Given a serialized file that contains additional bytes after the final END_FILE line
     When reconstruction is attempted
     Then reconstruction terminates with error code E6
-
-  Scenario: S22 — Trailing blank lines after final record are tolerated
-    Given a serialized file that contains one or more blank lines after the final END_FILE line
-    When reconstruction is attempted
-    Then reconstruction succeeds
-    And reconstructed files are byte-for-byte identical to the original source tree
 
   Scenario: S16 — Path traversal via ".." component
     Given a serialized file containing a PATH value with a ".." component

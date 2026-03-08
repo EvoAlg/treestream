@@ -1,6 +1,6 @@
 # TreeStream Specification
 
-Version: v0.1.10 Status: Final
+Version: v0.1.9 Status: Final
 
 ## 1. Purpose
 
@@ -224,7 +224,7 @@ The Serialized File shall begin with the following header lines in the
 order shown:
 
 -   `TREESTREAM 1`
--   `SPEC_VERSION: v0.1.10`
+-   `SPEC_VERSION: v0.1.9`
 -   `ENCODING: UTF-8`
 -   `NEWLINES: LF`
 -   `RECORDS: FILE`
@@ -333,7 +333,7 @@ Before reconstruction begins, the system shall:
     5.4.
 -   Validate that `TREESTREAM 1` is present and supported.
 -   Validate that `SPEC_VERSION` equals the exact supported
-    specification version string `v0.1.10` (case-sensitive).
+    specification version string `v0.1.9` (case-sensitive).
 -   Validate that `ENCODING` is `UTF-8`.
 -   Validate that `NEWLINES` is `LF`.
 -   Validate that `RECORDS` equals `FILE` exactly (case-sensitive).
@@ -367,7 +367,7 @@ The parser shall not search for marker strings within the content bytes.
 
 If any structural deviation is detected, reconstruction shall terminate
 with an explicit error.
-After the terminating newline of the final END_FILE line (LF, or CRLF in accepted reconstruction input), the parser shall confirm that the end of the Serialized File has been reached. Trailing blank lines (sequences of LF or CRLF only) after the final END_FILE shall be permitted and ignored. Any additional bytes other than blank lines present after the final record shall be treated as a structural error and reconstruction shall terminate with E6.
+After the terminating newline of the final END_FILE line (LF, or CRLF in accepted reconstruction input), the parser shall confirm that the end of the Serialized File has been reached. Any additional bytes present after the final record shall be treated as a structural error and reconstruction shall terminate with E6.
 
 Implementation note (normative)
 

@@ -7,7 +7,7 @@ It converts a root directory into a single structured serialized file and can re
 ## Specification
 
 Authoritative specification: `SPEC.md`
-Current version: **v0.1.9**
+Current version: **v0.1.10**
 
 All implementation decisions must conform exactly to the specification. The specification is the sole source of truth.
 
