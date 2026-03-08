@@ -185,7 +185,7 @@ A reviewer can validate, by inspection and/or a deterministic validator script, 
 - Each record matches the required marker order and spacing rules.
 - Each `CONTENT_BYTES` equals the exact number of bytes in the content block.
 - Record ordering is correct.
-- End-of-file contains no trailing bytes beyond the last record terminator.
+- Trailing blank lines (LF or CRLF sequences only) after the final `END_FILE` are permitted and ignored; any non-blank trailing bytes cause rejection with E6.
 
 **Fail condition:**  
 Any deviation from the spec structure, markers, spacing, ordering, content length, structural newlines, or trailing bytes.
@@ -275,7 +275,7 @@ Validate the core transport workflow where serialized plain text is passed throu
 6. Compare all reconstructed directory trees:
    - Identical relative path set
    - Byte-for-byte identical file contents
-5. Re-serialize at least one reconstructed output and verify serialized structural newlines are LF-only.
+7. Re-serialize at least one reconstructed output and verify serialized structural newlines are LF-only.
 
 **Pass condition:**  
 - Reconstruction succeeds for LF, CRLF structural-input, and trailing-blank-lines variants.
