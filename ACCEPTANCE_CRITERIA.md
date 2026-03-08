@@ -34,7 +34,7 @@ For identical input directory trees, serialization must produce **byte-for-byte 
 
 The determinism fixture is a directory tree located at:
 
-`fixtures/determinism_v0.1.10/`
+`fixtures/determinism/`
 
 It must exist in the repo and contain **at minimum** the following structure and content characteristics (the fixture contents must be committed and not altered during verification):
 
@@ -93,7 +93,7 @@ Reconstruction of a serialized directory must reproduce the original tree exactl
 
 The round-trip fixture is a directory tree located at:
 
-`fixtures/roundtrip_v0.1.10/`
+`fixtures/roundtrip/`
 
 It must exist in the repo and contain **at minimum**:
 
@@ -110,7 +110,7 @@ The fixture contents must be **committed** and must not be altered during verifi
 ### Verification procedure (must be followed exactly)
 
 1. Serialize the fixture directory:
-   - Input: `fixtures/roundtrip_v0.1.10/`
+   - Input: `fixtures/roundtrip/`
    - Output: `artifacts/roundtrip_source.treestream`
 
 2. Reconstruct into a fresh target directory:
@@ -220,7 +220,7 @@ This gate applies to both operations:
    - The required message elements (operation + path/file where applicable + condition)
 
 2. Verification must be performed using **predefined negative fixtures** committed in the repo under:
-- `fixtures/errors_v0.1.10/`
+- `fixtures/errors/`
 
 Negative fixtures must be designed so the triggering condition is deterministic and reproducible.
 
@@ -302,7 +302,7 @@ Any reconstruction failure caused by CRLF structural input or trailing blank lin
 - Record ordering must be stable and derived from sorted `PATH` strings, not filesystem enumeration order.
 
 ### Notes for Gate C (Round-Trip Integrity)
-- The "non-trivial fixture" is **fixed** by this document: only `fixtures/roundtrip_v0.1.10/` is valid for Gate C.
+- The "non-trivial fixture" is **fixed** by this document: only `fixtures/roundtrip/` is valid for Gate C.
 - Comparison must be byte-level for file contents (hashing per file is acceptable).
 - Ignore filesystem metadata; only paths and contents matter.
 - Ensure reconstruction does not create extra files beyond those in the serialized representation.
