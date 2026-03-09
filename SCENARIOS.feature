@@ -33,7 +33,7 @@ Feature: TreeStream Serialization and Reconstruction
   Scenario: S04 — CRLF preservation
     Given a root directory containing "crlf.txt" whose bytes include CR LF sequences
     When the directory is serialized
-    Then the serialized content block preserves the exact byte sequence including CR LF
+    Then the serialized content block contains the base64 encoding of the original bytes, preserving CR LF within the decoded content
     And reconstruction reproduces bytes identical to the source file
 
   Scenario: S05 — Deterministic ordering
@@ -152,3 +152,10 @@ Feature: TreeStream Serialization and Reconstruction
     Given a target directory path whose parent is not writable due to permission restrictions
     When reconstruction is attempted
     Then reconstruction terminates with error code E10
+
+  Scenario: S23 — Base64 content encoding round-trip integrity
+    Given a root directory containing files with varied byte content including non-ASCII UTF-8 and control characters
+    When the directory is serialized
+    Then each content block in the serialized file contains valid standard Base64 (RFC 4648) with no line wrapping
+    And CONTENT_BYTES for each record equals the decoded byte count of its content block
+    And reconstruction produces files byte-for-byte identical to the originals

@@ -1,6 +1,6 @@
 # TreeStream Specification
 
-Version: v0.1.10 Status: Final
+Version: v0.1.11 Status: Final
 
 ## 1. Purpose
 
@@ -174,7 +174,8 @@ The Serialized Representation shall remain human-readable plain text.
 
 **NFR12 --- Scope Limitation**\
 The system shall not introduce compression, encryption, binary file
-support, or external service integration.
+support, or external service integration. The required base64 encoding
+of content blocks as specified in Section 5.5 is a permitted exception.
 
 **NFR13 --- Version Traceability**\
 The implementation shall embed its version identifier and that version
@@ -224,7 +225,7 @@ The Serialized File shall begin with the following header lines in the
 order shown:
 
 -   `TREESTREAM 1`
--   `SPEC_VERSION: v0.1.10`
+-   `SPEC_VERSION: v0.1.11`
 -   `ENCODING: UTF-8`
 -   `NEWLINES: LF`
 -   `RECORDS: FILE`
@@ -240,8 +241,8 @@ header.
 ### 5.5 File Entry Record Format (Length-Prefixed)
 
 Each file entry shall be encoded as a record with a fixed set of
-metadata lines followed by a raw content block whose length is
-explicitly declared in bytes.
+metadata lines followed by a base64-encoded content block whose
+original byte length is explicitly declared.
 
 A file entry shall have this exact structure:
 
@@ -249,30 +250,45 @@ A file entry shall have this exact structure:
 2.  `PATH: <relative_path>`
 3.  `CONTENT_BYTES: <non_negative_integer>`
 4.  `BEGIN_CONTENT`
-5.  `<exactly CONTENT_BYTES bytes of file content>`
+5.  `<base64-encoded file content>`
 6.  `END_CONTENT`
 7.  `END_FILE`
+
+ENCODING NOTE: `CONTENT_BYTES` declares the number of bytes in the
+original (pre-encoding) file content. The bytes written between
+`BEGIN_CONTENT` and the structural separator are the base64 encoding
+of those original bytes, not the original bytes themselves.
 
 Rules: - The metadata lines `PATH: <relative_path>` and
 `CONTENT_BYTES: <non_negative_integer>` shall use the exact format
 `KEY: VALUE` with exactly one space after the colon. No additional
 leading or trailing whitespace is permitted on these lines. -
-`<relative_path>` shall conform to Section 5.3. - `CONTENT_BYTES` shall be the exact number of bytes in the file's UTF-8 content. The value shall be represented as a decimal integer string. For values greater than zero, no leading zeros are permitted. For the value zero, the single character `0` shall be used. - The content block begins immediately after the single LF byte terminating the
-`BEGIN_CONTENT` line. - The content block ends after exactly
-`CONTENT_BYTES` bytes. These bytes are opaque and may contain any
-values, including sequences that resemble markers such as `END_CONTENT`
-or `END_FILE`. - The single LF byte that separates the content block
-from the `END_CONTENT` line is a structural separator and shall not be
-included in `CONTENT_BYTES`. This LF byte shall always be present, even
-when `CONTENT_BYTES` is `0`. - After reading exactly `CONTENT_BYTES`
-content bytes, the next byte in the Serialized File shall be the
-structural LF separator (`0x0A`), followed by the `END_CONTENT` line
-terminated by LF, followed by the `END_FILE` line terminated by LF. -
+`<relative_path>` shall conform to Section 5.3. - `CONTENT_BYTES`
+shall be the exact number of bytes in the file's original UTF-8
+content (the decoded byte count, not the base64-encoded length). The
+value shall be represented as a decimal integer string. For values
+greater than zero, no leading zeros are permitted. For the value zero,
+the single character `0` shall be used. - The serializer shall encode
+the file's UTF-8 bytes using standard Base64 (RFC 4648 §4) with no
+line wrapping and write the resulting ASCII characters as the content
+block. For `CONTENT_BYTES` bytes of input, the encoded content block
+shall be exactly `ceil(CONTENT_BYTES / 3) * 4` bytes (padded with `=`
+to a multiple of four characters). - The content block begins
+immediately after the single LF byte terminating the `BEGIN_CONTENT`
+line. - The single LF byte that separates the content block from the
+`END_CONTENT` line is a structural separator and shall not be counted
+in `CONTENT_BYTES`. This LF byte shall always be present, even when
+`CONTENT_BYTES` is `0`. - After reading the base64 content block
+bytes, the next byte in the Serialized File shall be the structural LF
+separator (`0x0A`), followed by the `END_CONTENT` line terminated by
+LF, followed by the `END_FILE` line terminated by LF. - Parsing shall
+be driven by the base64 byte length derived from `CONTENT_BYTES`.
 Implementations shall not scan for marker strings within the content
-block. Parsing shall be driven only by `CONTENT_BYTES` and the required
-structural markers immediately following the content block. - Empty
-files shall be represented with `CONTENT_BYTES: 0` and an empty content
-block between `BEGIN_CONTENT` and `END_CONTENT`.
+block. - If the content block bytes are not valid standard Base64 or
+the decoded length does not equal `CONTENT_BYTES`, reconstruction
+shall terminate with E6. - Empty files shall be represented with
+`CONTENT_BYTES: 0` and an empty content block (zero bytes) between
+`BEGIN_CONTENT` and `END_CONTENT`.
 
 ### 5.6 Deterministic Record Ordering
 
@@ -298,13 +314,14 @@ trailing whitespace.
 
 ### 5.8 Minimal Example (Illustrative)
 
-Example layout for a single file `notes/todo.txt` with content `Hi`:
+Example layout for a single file `notes/todo.txt` with content `Hi`
+(2 UTF-8 bytes; base64-encoded as `SGk=`):
 
 -   `FILE`
 -   `PATH: notes/todo.txt`
 -   `CONTENT_BYTES: 2`
 -   `BEGIN_CONTENT`
--   `Hi`
+-   `SGk=`
 -   `END_CONTENT`
 -   `END_FILE`
 
@@ -333,7 +350,7 @@ Before reconstruction begins, the system shall:
     5.4.
 -   Validate that `TREESTREAM 1` is present and supported.
 -   Validate that `SPEC_VERSION` equals the exact supported
-    specification version string `v0.1.10` (case-sensitive).
+    specification version string `v0.1.11` (case-sensitive).
 -   Validate that `ENCODING` is `UTF-8`.
 -   Validate that `NEWLINES` is `LF`.
 -   Validate that `RECORDS` equals `FILE` exactly (case-sensitive).
@@ -353,15 +370,20 @@ For each file record, the system shall:
     -   `END_CONTENT`
     -   `END_FILE`
 2.  Validate that `CONTENT_BYTES` is a non-negative integer.
-3.  Read exactly `CONTENT_BYTES` bytes following the structural newline
-    terminating the `BEGIN_CONTENT` line (LF, or accepted CRLF in
-    reconstruction input).
-4.  Read and validate the structural separator that follows the content
-    bytes as either:
+3.  Compute the expected base64 content block byte length as
+    `ceil(CONTENT_BYTES / 3) * 4`. For `CONTENT_BYTES` equal to `0`,
+    the expected length is `0`. Read exactly that many bytes following
+    the structural newline terminating the `BEGIN_CONTENT` line (LF,
+    or accepted CRLF in reconstruction input).
+4.  Base64-decode the content block bytes using standard Base64
+    (RFC 4648 §4). If the bytes are not valid Base64 or the decoded
+    byte count does not equal `CONTENT_BYTES`, terminate with E6.
+5.  Read and validate the structural separator that follows the content
+    block as either:
     - a single LF byte (`0x0A`), or
     - a CRLF sequence (`0x0D 0x0A`) in reconstruction input.
-5.  Read the next line and confirm it is exactly `END_CONTENT`.
-6.  Read the next line and confirm it is exactly `END_FILE`.
+6.  Read the next line and confirm it is exactly `END_CONTENT`.
+7.  Read the next line and confirm it is exactly `END_FILE`.
 
 The parser shall not search for marker strings within the content bytes.
 
@@ -591,7 +613,8 @@ The Serialized File shall be read and written in binary mode such that
 newline translation does not occur. File contents shall be written
 exactly as read, with: - No newline normalisation. - No trimming. - No
 whitespace modification. - No encoding conversion beyond UTF-8
-validation.
+validation and the required base64 encoding of content blocks (see
+Section 5.5).
 
 The number of bytes written for each record shall match the declared
 `CONTENT_BYTES` value exactly.
@@ -641,7 +664,8 @@ scope.
 ### 9.4 No Compression or Encryption
 
 The system shall not introduce compression, encryption, obfuscation, or
-encoding transformations beyond UTF-8 validation.
+encoding transformations beyond UTF-8 validation and the required
+base64 encoding of content blocks (see Section 5.5).
 
 ### 9.5 No Metadata Preservation
 
@@ -700,7 +724,8 @@ is not supported.
 ### 10.4 Compression or Encryption
 
 Compression, encryption, obfuscation, or any form of content
-transformation beyond UTF-8 validation is not supported.
+transformation beyond UTF-8 validation and the required base64
+encoding of content blocks (see Section 5.5) is not supported.
 
 ### 10.5 Incremental or Differential Serialization
 

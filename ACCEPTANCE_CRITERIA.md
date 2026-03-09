@@ -1,8 +1,8 @@
-# TreeStream Acceptance Criteria (SPEC v0.1.10)
+# TreeStream Acceptance Criteria (SPEC v0.1.11)
 
-Version pin: **v0.1.10**
+Version pin: **v0.1.11**
 
-This document defines the **mandatory acceptance gates** for TreeStream against **SPEC.md v0.1.10**.  
+This document defines the **mandatory acceptance gates** for TreeStream against **SPEC.md v0.1.11**.  
 **All six gates (A–F) must pass. Any single gate failing is an overall FAIL.**  
 A reviewer must be able to verify each gate **using only the repository contents and local execution results**, without needing any knowledge of the generation process.
 
@@ -138,17 +138,17 @@ Any missing file, extra file, path mismatch, or any byte-level content mismatch.
 
 ---
 
-## Gate D — Format Conformance to SPEC.md v0.1.10
+## Gate D — Format Conformance to SPEC.md v0.1.11
 
-**Objective:**  
-The serialized output format must conform **exactly** to `SPEC.md v0.1.10`, including header, record structure, declared content lengths, and structural LF usage.
+**Objective:**
+The serialized output format must conform **exactly** to `SPEC.md v0.1.11`, including header, record structure, base64-encoded content blocks, declared original content lengths, and structural LF usage.
 
 ### Header conformance checks
 
-A serialized file must begin with these exact header lines in order (LF line endings), matching `SPEC.md v0.1.10`:
+A serialized file must begin with these exact header lines in order (LF line endings), matching `SPEC.md v0.1.11`:
 
 - `TREESTREAM 1`
-- `SPEC_VERSION: v0.1.10`
+- `SPEC_VERSION: v0.1.11`
 - `ENCODING: UTF-8`
 - `NEWLINES: LF`
 - `RECORDS: FILE`
@@ -162,14 +162,14 @@ Header matches exactly, including:
 
 ### Record structure checks (each file record)
 
-Each record must follow the exact structure defined in `SPEC.md v0.1.10` Section 5.5:
+Each record must follow the exact structure defined in `SPEC.md v0.1.11` Section 5.5:
 
 1. `FILE`
 2. `PATH: <relative_path>`
 3. `CONTENT_BYTES: <non_negative_integer>`
 4. `BEGIN_CONTENT`
-5. Exactly `CONTENT_BYTES` bytes of content
-6. A single structural LF byte (0x0A) following the content bytes
+5. A base64-encoded content block (RFC 4648 standard alphabet, no line wrapping); the decoded byte count must equal `CONTENT_BYTES`
+6. A single structural LF byte (0x0A) following the content block
 7. `END_CONTENT` (LF-terminated)
 8. `END_FILE` (LF-terminated)
 
@@ -178,24 +178,27 @@ Additional required checks:
 - No extra blank lines between records.
 - After the final `END_FILE` line terminator, trailing blank lines (LF or CRLF sequences only) shall be permitted and ignored. Any non-blank bytes after the final record shall cause rejection with E6.
 
-**Pass condition:**  
+**Pass condition:**
 A reviewer can validate, by inspection and/or a deterministic validator script, that:
 - Header matches exactly.
 - All structural newlines are LF bytes.
 - Each record matches the required marker order and spacing rules.
-- Each `CONTENT_BYTES` equals the exact number of bytes in the content block.
+- Each content block contains valid standard Base64 (RFC 4648, no line wrapping).
+- The decoded byte count of each content block equals its `CONTENT_BYTES` value.
+- `CONTENT_BYTES` reflects the original (pre-encoding) file byte count, not the base64-encoded length.
 - Record ordering is correct.
 - Trailing blank lines (LF or CRLF sequences only) after the final `END_FILE` are permitted and ignored; any non-blank trailing bytes cause rejection with E6.
 
-**Fail condition:**  
-Any deviation from the spec structure, markers, spacing, ordering, content length, structural newlines, or trailing bytes.
+**Fail condition:**
+Any deviation from the spec structure, markers, spacing, ordering, base64 encoding, content length, structural newlines, or trailing bytes.
 
-**Evidence to capture:**  
+**Evidence to capture:**
 - A validation output proving:
   - Header exact match
   - LF-only structural lines
   - Record marker order integrity
-  - Content-length correctness
+  - Base64 validity and no line wrapping for each content block
+  - Decoded content length matches `CONTENT_BYTES` for each record
   - Correct ordering by PATH
   - Trailing blank lines after final record are tolerated; non-blank trailing bytes are rejected with E6
 
@@ -204,7 +207,7 @@ Any deviation from the spec structure, markers, spacing, ordering, content lengt
 ## Gate E — Error Handling and E-Code Mapping to SPEC.md
 
 **Objective:**  
-Observed error behavior must map to the error codes and conditions defined in `SPEC.md v0.1.10`, and messages must be explicit.
+Observed error behavior must map to the error codes and conditions defined in `SPEC.md v0.1.11`, and messages must be explicit.
 
 ### Scope
 
