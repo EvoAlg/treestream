@@ -1,6 +1,6 @@
 # Agent Rules
 
-Version: v0.1.17  
+Version: v0.1.16  
 Status: Dark Factory Infrastructure — permanent, cross-project, human-authored only
 
 This file is a Dark Factory infrastructure file. It is not a project
@@ -121,9 +121,9 @@ May only create or modify files within the following explicit scope:
 - `TEST_REPORT.md`
 - `REVIEW.md`
 - `regen_request.md`
-- `artifacts/` — may create, overwrite, or delete files and
-  subdirectories under `artifacts/`; may not create subdirectories
-  outside `artifacts/`
+- `artifacts/` — flat files only; may create or overwrite files
+  directly under `artifacts/` root; may not create subdirectories
+  under `artifacts/`
 
 **May read** (but not modify) the following paths for test execution:
 
