@@ -7,7 +7,7 @@ from .errors import TreeStreamError
 
 HEADER_LINES = (
     b"TREESTREAM 1\n",
-    b"SPEC_VERSION: v0.1.10\n",
+    b"SPEC_VERSION: v0.1.11\n",
     b"ENCODING: UTF-8\n",
     b"NEWLINES: LF\n",
     b"RECORDS: FILE\n",
@@ -18,6 +18,12 @@ INVALID_COMPONENT_CHARS = frozenset('<>"|?*')
 RESERVED_DEVICE_NAMES = frozenset(
     ["CON", "PRN", "AUX", "NUL"] + [f"COM{i}" for i in range(10)] + [f"LPT{i}" for i in range(10)]
 )
+
+
+def encoded_content_length(content_bytes: int) -> int:
+    if content_bytes == 0:
+        return 0
+    return ((content_bytes + 2) // 3) * 4
 
 
 def assert_windows(operation: str) -> None:

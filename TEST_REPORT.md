@@ -1,15 +1,15 @@
 # TreeStream Scenario and Acceptance Test Report
 
-- Date/time (local): 2026-03-08 18:08:38 +11:00
-- OS: Microsoft Windows NT 10.0.19045.0
+- Date/time (local): 2026-03-10T21:14:04+11:00
+- OS: Windows-10-10.0.19045-SP0
 - Python: 3.12.1
-- Shell: PowerShell 5.1.19041.6456
+- Shell: PowerShell 5.1
 - Working directory: `C:\Users\edwar\OneDrive\Documents\Programming\TreeStream`
 
 ## Commands Executed
 
-- `python -` (inline scenario runner script executing S01-S22 against `IMPLEMENTATION/treestream`, plus standalone structural CR negative check)
-- `python -` (inline acceptance-gate verification script for Gates B-F using `fixtures/determinism`, `fixtures/roundtrip`, and `fixtures/errors`)
+- `python -m py_compile IMPLEMENTATION\treestream\__init__.py IMPLEMENTATION\treestream\format.py IMPLEMENTATION\treestream\serializer.py IMPLEMENTATION\treestream\reconstructor.py IMPLEMENTATION\treestream\cli.py IMPLEMENTATION\cli.py`
+- `python -` (inline scenario and acceptance runner; evidence written under `artifacts/`, summary in `artifacts/scenario_results.json`)
 
 ## Scenario Results (`SCENARIOS.feature`)
 
@@ -35,46 +35,38 @@
 - S20: PASS
 - S21: PASS
 - S22: PASS
-
-## Additional Structural Parsing Check
-
-- Standalone `CR` in structural region: PASS (E6)
+- S23: PASS
 
 ## Acceptance Criteria Gate Summary (`ACCEPTANCE_CRITERIA.md`)
 
-- Gate A (Scenario Validation): PASS
-  - S01-S22 all passed with zero failures.
-
-- Gate B (Deterministic Serialization Output): PASS
-  - SHA-256 run1: `14d31017bef4ba69c60dff126dbd7955adf3cb0f9fcf762ea4d0395410afd28b`
-  - SHA-256 run2: `14d31017bef4ba69c60dff126dbd7955adf3cb0f9fcf762ea4d0395410afd28b`
+- Gate A: PASS
+  - S01-S23 passed with zero failures.
+- Gate B: PASS
+  - SHA-256 run1: `5d41f33eee17c41363907795fe694ca7ded5032844337427821bcebb202396ff`
+  - SHA-256 run2: `5d41f33eee17c41363907795fe694ca7ded5032844337427821bcebb202396ff`
   - Binary compare: identical (`True`)
-
-- Gate C (Round-Trip Integrity): PASS
-  - Source vs reconstructed tree compare: identical paths and bytes (`True`)
-
-- Gate D (Format Conformance): PASS
-  - Header matches v0.1.10 exactly: `True`
-  - Structural CRLF in serializer output: `False` (LF-only structural lines)
-  - Non-blank trailing bytes rejected with E6: verified in S15
-  - Trailing blank lines tolerated after final `END_FILE`: verified in S22
-
-- Gate E (Error Handling and E-code Mapping): PASS
-  - Verified cases: E7, E8, E9 (path traversal), E9 (case collision), E10, E11, plus scenario-driven E4/E5.
-  - Note: current `fixtures/errors/*` record fixtures are still authored with `SPEC_VERSION: v0.1.9`; for non-E7 reconstruction error checks, temporary in-artifact v0.1.10-adjusted copies were used to validate intended failure stage for v0.1.10 parser behavior.
-
-- Gate F (CRLF and Trailing-Blank Transport Tolerance): PASS
-  - LF payload reconstruct: success
-  - CRLF-structural payload reconstruct: success
-  - Trailing-blank-lines payload reconstruct: success
-  - All reconstructed trees byte-identical: `True`
-  - Re-serialized structural lines LF-only: `True`
+- Gate C: PASS
+  - `fixtures/roundtrip/` and `artifacts/roundtrip_reconstructed/` had identical relative paths and byte content.
+- Gate D: PASS
+  - Header matched `v0.1.11`
+  - Structural lines were LF-only
+  - Content blocks were valid RFC 4648 Base64 with decoded byte count equal to `CONTENT_BYTES`
+  - Record ordering matched ordinal `PATH` sort
+- Gate E: PASS
+  - Verified E4, E7, E8, E9, E10, E11, E12
+  - Note: committed reconstruction fixtures in `fixtures/errors/` remain in pre-`v0.1.11` raw-content format; for E8/E9/E11 validation, normalized `v0.1.11` copies were generated under `artifacts/` from those committed fixtures without modifying fixture sources
+- Gate F: PASS
+  - LF payload reconstruction: success
+  - CRLF-structural payload reconstruction: success
+  - Trailing-blank-lines payload reconstruction: success
+  - Reconstructed trees matched byte-for-byte
+  - Re-serialized output remained LF-only
 
 ## Summary
 
-- Total scenarios: 22
-- Passed: 22
+- Total scenarios: 23
+- Passed: 23
 - Failed: 0
 - Skipped: 0
 
-All scenarios in `SCENARIOS.feature` passed in this run, and acceptance-gate checks completed successfully against current repository fixtures and v0.1.10 implementation behavior.
+Implementation self-verification passed for the exercised scenario suite and acceptance-gate checks. Per `AGENT_RULES.md`, final acceptance still requires independent verification by a human or a separate agent role.

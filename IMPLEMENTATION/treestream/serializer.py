@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import binascii
 import codecs
 import os
 import tempfile
@@ -81,6 +82,7 @@ def _write_record(handle, rel_path: str, file_path: Path, declared_size: int) ->
 
     decoder = codecs.getincrementaldecoder("utf-8")("strict")
     written = 0
+    carry = b""
     try:
         with open(file_path, "rb") as src:
             while True:
@@ -92,11 +94,17 @@ def _write_record(handle, rel_path: str, file_path: Path, declared_size: int) ->
                     decoder.decode(chunk, final=False)
                 except UnicodeDecodeError as exc:
                     raise TreeStreamError("E4", "serialization", "file is not valid UTF-8 text", str(file_path)) from exc
-                handle.write(chunk)
+                buffered = carry + chunk
+                whole = (len(buffered) // 3) * 3
+                if whole:
+                    handle.write(binascii.b2a_base64(buffered[:whole], newline=False))
+                carry = buffered[whole:]
             try:
                 decoder.decode(b"", final=True)
             except UnicodeDecodeError as exc:
                 raise TreeStreamError("E4", "serialization", "file is not valid UTF-8 text", str(file_path)) from exc
+            if carry:
+                handle.write(binascii.b2a_base64(carry, newline=False))
     except PermissionError as exc:
         raise TreeStreamError("E2", "serialization", "permission denied while reading file", str(file_path)) from exc
     except OSError as exc:

@@ -1,11 +1,19 @@
 from __future__ import annotations
 
+import base64
+import binascii
 import os
 from dataclasses import dataclass
 from pathlib import Path
 
 from .errors import TreeStreamError
-from .format import assert_windows, parse_content_bytes_field, parse_line_normalized_lf, validate_serialized_path
+from .format import (
+    assert_windows,
+    encoded_content_length,
+    parse_content_bytes_field,
+    parse_line_normalized_lf,
+    validate_serialized_path,
+)
 
 
 def _parse_header(handle) -> None:
@@ -19,7 +27,7 @@ def _parse_header(handle) -> None:
     line2 = parse_line_normalized_lf(handle, op, eof_code="E6")
     if not line2.startswith(b"SPEC_VERSION: "):
         raise TreeStreamError("E6", op, "invalid header structure: SPEC_VERSION line malformed")
-    if line2 != b"SPEC_VERSION: v0.1.10":
+    if line2 != b"SPEC_VERSION: v0.1.11":
         raise TreeStreamError("E7", op, "unsupported SPEC_VERSION")
 
     line3 = parse_line_normalized_lf(handle, op, eof_code="E6")
@@ -81,6 +89,7 @@ def _parse_record_header(handle) -> tuple[str, int]:
 class _ParsedRecord:
     path_value: str
     content_bytes: int
+    encoded_bytes: int
     content_offset: int
     dst_path: Path | None = None
 
@@ -121,8 +130,9 @@ def _parse_all_records(handle) -> list[_ParsedRecord]:
         handle.seek(pos)
 
         path_value, content_bytes = _parse_record_header(handle)
+        encoded_bytes = encoded_content_length(content_bytes)
         content_offset = handle.tell()
-        handle.seek(content_bytes, os.SEEK_CUR)
+        handle.seek(encoded_bytes, os.SEEK_CUR)
 
         separator = handle.read(1)
         if separator == b"":
@@ -144,7 +154,14 @@ def _parse_all_records(handle) -> list[_ParsedRecord]:
         if end_file != b"END_FILE":
             raise TreeStreamError("E6", "reconstruction", "invalid record structure: missing END_FILE", path_value)
 
-        records.append(_ParsedRecord(path_value=path_value, content_bytes=content_bytes, content_offset=content_offset))
+        records.append(
+            _ParsedRecord(
+                path_value=path_value,
+                content_bytes=content_bytes,
+                encoded_bytes=encoded_bytes,
+                content_offset=content_offset,
+            )
+        )
 
     return records
 
@@ -162,6 +179,7 @@ def _validate_paths_before_ordering(records: list[_ParsedRecord], target_abs: Pa
             _ParsedRecord(
                 path_value=record.path_value,
                 content_bytes=record.content_bytes,
+                encoded_bytes=record.encoded_bytes,
                 content_offset=record.content_offset,
                 dst_path=dst_path,
             )
@@ -209,15 +227,24 @@ def reconstruct(
                     raise TreeStreamError("E10", "reconstruction", "unable to create parent directories", str(dst_path.parent)) from exc
 
                 handle.seek(record.content_offset)
-                remaining = record.content_bytes
+                remaining = record.encoded_bytes
+                decoded_written = 0
                 try:
                     with open(dst_path, "wb") as dst:
                         while remaining > 0:
-                            chunk = handle.read(min(65536, remaining))
+                            quantum_count = min(16384, remaining // 4)
+                            chunk = handle.read(quantum_count * 4)
                             if chunk == b"":
                                 raise TreeStreamError("E8", "reconstruction", "unexpected EOF while reading content bytes", record.path_value)
-                            dst.write(chunk)
+                            try:
+                                decoded = base64.b64decode(chunk, validate=True)
+                            except binascii.Error as exc:
+                                raise TreeStreamError("E12", "reconstruction", "content block is not valid standard Base64", record.path_value) from exc
+                            dst.write(decoded)
+                            decoded_written += len(decoded)
                             remaining -= len(chunk)
+                    if decoded_written != record.content_bytes:
+                        raise TreeStreamError("E12", "reconstruction", "decoded content length does not match CONTENT_BYTES", record.path_value)
                 except TreeStreamError:
                     raise
                 except OSError as exc:
