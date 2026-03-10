@@ -213,7 +213,7 @@ Observed error behavior must map to the error codes and conditions defined in `S
 
 This gate applies to both operations:
 - Serialization errors (E1–E5)
-- Reconstruction errors (E6–E11)
+- Reconstruction errors (E6–E12)
 
 ### Verification requirements
 
@@ -311,7 +311,7 @@ Any reconstruction failure caused by CRLF structural input or trailing blank lin
 - Ensure reconstruction does not create extra files beyond those in the serialized representation.
 
 ### Notes for Gate E (E-code Mapping)
-- The reviewer must verify **correctness** by comparing observed failures to SPEC-defined conditions (E1–E11), not by checking that "an error happened."
+- The reviewer must verify **correctness** by comparing observed failures to SPEC-defined conditions (E1–E12), not by checking that "an error happened."
 - Be careful with ambiguous OS-dependent errors:
   - The fixture design must make the triggering condition deterministic (e.g., explicit invalid PATH in serialized file for E9; explicit header mismatch for E7).
 - Ensure the implementation does not "auto-recover" (e.g., skipping invalid entries) because the spec prohibits silent fallback.

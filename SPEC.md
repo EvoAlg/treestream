@@ -286,7 +286,7 @@ be driven by the base64 byte length derived from `CONTENT_BYTES`.
 Implementations shall not scan for marker strings within the content
 block. - If the content block bytes are not valid standard Base64 or
 the decoded length does not equal `CONTENT_BYTES`, reconstruction
-shall terminate with E6. - Empty files shall be represented with
+shall terminate with E12. - Empty files shall be represented with
 `CONTENT_BYTES: 0` and an empty content block (zero bytes) between
 `BEGIN_CONTENT` and `END_CONTENT`.
 
@@ -377,7 +377,7 @@ For each file record, the system shall:
     or accepted CRLF in reconstruction input).
 4.  Base64-decode the content block bytes using standard Base64
     (RFC 4648 §4). If the bytes are not valid Base64 or the decoded
-    byte count does not equal `CONTENT_BYTES`, terminate with E6.
+    byte count does not equal `CONTENT_BYTES`, terminate with E12.
 5.  Read and validate the structural separator that follows the content
     block as either:
     - a single LF byte (`0x0A`), or
@@ -520,7 +520,9 @@ of the following occur:
 **E6 --- Invalid Serialized File Structure**\
 The header or record structure is invalid under Section 5 as applied by
 the reconstruction parser, including accepted structural CRLF-to-LF
-normalization rules.
+normalization rules. This includes malformed or missing markers,
+unexpected bytes after the final `END_FILE` line (excluding permitted
+trailing blank lines), and standalone `CR` bytes outside content blocks.
 
 **E7 --- Header Mismatch**\
 The `TREESTREAM` version, `SPEC_VERSION`, or required header fields are
@@ -539,6 +541,11 @@ The system is unable to create directories or write files in the Target Director
 
 **E11 --- Overwrite Prohibited**\
 A file already exists and overwrite mode is disabled.
+
+**E12 --- Invalid Base64 Content**\
+The content block for a file record contains data that is not valid
+standard Base64 (RFC 4648 §4), or the decoded byte count does not equal
+the declared `CONTENT_BYTES` value.
 
 ### 7.4 Deterministic Failure Behaviour
 
