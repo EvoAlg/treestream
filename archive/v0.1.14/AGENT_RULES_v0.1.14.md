@@ -1,6 +1,6 @@
 # Agent Rules
 
-Version: v0.1.15  
+Version: v0.1.14  
 Status: Dark Factory Infrastructure — permanent, cross-project, human-authored only
 
 This file is a Dark Factory infrastructure file. It is not a project
@@ -195,14 +195,6 @@ content, or communications intended for other agents.
 
 **May not** delegate any forbidden action to another AI, tool, or
 sub-process.
-
-**Must** archive the current spec version before bumping the version
-number. Before modifying `SPEC.md`, `SCENARIOS.feature`, or
-`ACCEPTANCE_CRITERIA.md` to introduce a new version, the spec agent
-must first create a snapshot of the current versions under
-`archive/vX.X.X/` (where X.X.X is the version being superseded).
-Archiving must be completed and confirmed before any version bump
-proceeds. Failure to archive before bumping is a governance violation.
 
 **Must** include the current `AGENT_RULES.md` version string in every
 substantive edit session as a governance integrity reference.
