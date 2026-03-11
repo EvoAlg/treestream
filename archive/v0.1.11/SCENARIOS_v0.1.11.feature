@@ -11,8 +11,7 @@ Feature: TreeStream Serialization and Reconstruction
     Given a root directory containing "a.txt" with content "Hello"
     When the directory is serialized
     And the output is reconstructed into a new target directory
-    Then the target contains a subdirectory matching the root directory name
-    And that subdirectory contains "a.txt"
+    Then the target contains "a.txt"
     And the content of "a.txt" is byte-for-byte identical to the source
 
   Scenario: S02 — Nested directory structure
@@ -51,7 +50,7 @@ Feature: TreeStream Serialization and Reconstruction
     Given a root directory containing no files or subdirectories
     When the directory is serialized
     Then the output file contains only the global header and the EOF marker
-    And reconstruction of that output creates an empty subdirectory named after the root directory inside the target
+    And reconstruction of that output produces an empty target directory
 
   Scenario: S07 — Non-existent target directory is created
     Given a serialized file representing a valid directory tree
@@ -160,12 +159,3 @@ Feature: TreeStream Serialization and Reconstruction
     Then each content block in the serialized file contains valid standard Base64 (RFC 4648) with no line wrapping
     And CONTENT_BYTES for each record equals the decoded byte count of its content block
     And reconstruction produces files byte-for-byte identical to the originals
-
-  Scenario: S24 — Root directory name is preserved through round-trip
-    Given a root directory named "MyProject" containing at least one text file
-    When the directory is serialized
-    Then the serialized header contains "ROOT_NAME: MyProject"
-    And when the serialized file is reconstructed into a target directory
-    Then a subdirectory named "MyProject" is created inside the target directory
-    And all files are present inside that subdirectory at their correct relative paths
-    And file contents are byte-for-byte identical to the originals

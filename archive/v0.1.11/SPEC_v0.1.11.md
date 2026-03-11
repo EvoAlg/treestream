@@ -1,6 +1,6 @@
 # TreeStream Specification
 
-Version: v0.1.12 Status: Final
+Version: v0.1.11 Status: Final
 
 ## 1. Purpose
 
@@ -225,11 +225,10 @@ The Serialized File shall begin with the following header lines in the
 order shown:
 
 -   `TREESTREAM 1`
--   `SPEC_VERSION: v0.1.12`
+-   `SPEC_VERSION: v0.1.11`
 -   `ENCODING: UTF-8`
 -   `NEWLINES: LF`
 -   `RECORDS: FILE`
--   `ROOT_NAME: <directory_name>`
 -   `END_HEADER`
 
 Header keys and values shall be ASCII and shall not contain newline
@@ -238,13 +237,6 @@ characters.
 `RECORDS: FILE` is a mandatory fixed-value header field reserved for
 future extensibility; any other value shall be treated as an invalid
 header.
-
-`ROOT_NAME` is a mandatory header field whose value is the name of the
-Root Directory (the final path component only, not the full path). The
-value shall be a non-empty string and shall not contain forward slashes
-(`/`), backslashes (`\`), or newline characters. It is derived
-deterministically from the Root Directory path provided at serialization
-time.
 
 ### 5.5 File Entry Record Format (Length-Prefixed)
 
@@ -322,24 +314,11 @@ trailing whitespace.
 
 ### 5.8 Minimal Example (Illustrative)
 
-Complete serialized file for a root directory named `notes` containing
-a single file `todo.txt` with content `Hi` (2 UTF-8 bytes;
-base64-encoded as `SGk=`):
-
-Header:
-
--   `TREESTREAM 1`
--   `SPEC_VERSION: v0.1.12`
--   `ENCODING: UTF-8`
--   `NEWLINES: LF`
--   `RECORDS: FILE`
--   `ROOT_NAME: notes`
--   `END_HEADER`
-
-File entry:
+Example layout for a single file `notes/todo.txt` with content `Hi`
+(2 UTF-8 bytes; base64-encoded as `SGk=`):
 
 -   `FILE`
--   `PATH: todo.txt`
+-   `PATH: notes/todo.txt`
 -   `CONTENT_BYTES: 2`
 -   `BEGIN_CONTENT`
 -   `SGk=`
@@ -360,15 +339,6 @@ implied by the serialized file paths; empty directories that contain no
 serialized files are out of scope.
 If the Target Directory does not exist at the time reconstruction begins, the system shall create it, including any necessary parent directories, before writing any files. If the Target Directory cannot be created, reconstruction shall terminate with E10.
 
-Upon reading the header, the system shall extract the `ROOT_NAME` value
-and construct the **root reconstruction path** as
-`<Target Directory>/<ROOT_NAME>`. All file paths from records shall be
-resolved against this root reconstruction path (not directly against the
-Target Directory). If the root reconstruction path does not exist, it
-shall be created as part of normal directory creation during
-reconstruction. If it cannot be created, reconstruction shall terminate
-with E10.
-
 ### 6.2 Input Validation
 
 Before reconstruction begins, the system shall:
@@ -380,13 +350,10 @@ Before reconstruction begins, the system shall:
     5.4.
 -   Validate that `TREESTREAM 1` is present and supported.
 -   Validate that `SPEC_VERSION` equals the exact supported
-    specification version string `v0.1.12` (case-sensitive).
+    specification version string `v0.1.11` (case-sensitive).
 -   Validate that `ENCODING` is `UTF-8`.
 -   Validate that `NEWLINES` is `LF`.
 -   Validate that `RECORDS` equals `FILE` exactly (case-sensitive).
--   Validate that `ROOT_NAME` is present and its value is a non-empty
-    string containing no forward slashes (`/`), backslashes (`\`), or
-    newline characters.
 
 If any header validation fails, reconstruction shall terminate with an
 explicit error.
@@ -643,9 +610,7 @@ No platform-dependent collation or locale-based sorting shall be used.
 Header lines shall: - Appear in fixed order as defined in Section 5.4. -
 Contain no additional whitespace. - Contain no environment-dependent
 values. - Not include timestamps, hostnames, or execution-specific
-metadata. - `ROOT_NAME` shall contain the final path component of the
-Root Directory path as provided to the serializer. It shall not include
-directory separators or leading/trailing whitespace.
+metadata.
 
 ------------------------------------------------------------------------
 
