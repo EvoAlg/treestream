@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(for f in c:/Users/edwar/OneDrive/Documents/Programming/TreeStream/fixtures/errors/*.treestream)",
+      "Bash(do echo \"=== $f ===\")",
+      "Read(//c/Users/edwar/OneDrive/Documents/Programming/TreeStream/**)",
+      "Bash(done)",
+      "Bash(python3 -c \":*)"
+    ]
+  }
+}
