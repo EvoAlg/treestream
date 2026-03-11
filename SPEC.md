@@ -244,7 +244,8 @@ Root Directory (the final path component only, not the full path). The
 value shall be a non-empty string and shall not contain forward slashes
 (`/`), backslashes (`\`), or newline characters. It is derived
 deterministically from the Root Directory path provided at serialization
-time.
+time. If the derived name contains leading or trailing whitespace,
+serialization shall terminate with E5a.
 
 ### 5.5 File Entry Record Format (Length-Prefixed)
 
@@ -386,9 +387,10 @@ Before reconstruction begins, the system shall:
 -   Validate that `RECORDS` equals `FILE` exactly (case-sensitive).
 -   Validate that `ROOT_NAME` is present and its value is a non-empty
     string containing no forward slashes (`/`), backslashes (`\`), or
-    newline characters.
+    newline characters. If `ROOT_NAME` is absent or its value fails this
+    check, reconstruction shall terminate with E7.
 
-If any header validation fails, reconstruction shall terminate with an
+If any other header validation fails, reconstruction shall terminate with an
 explicit error.
 
 ### 6.3 Record Parsing
@@ -540,6 +542,11 @@ An unexpected filesystem error occurs during traversal or file reading,
 including encountering a symlink, junction, or other reparse point
 within the Root Directory.
 
+**E5a --- Invalid Root Directory Name**\
+The name of the Root Directory (the value that would be recorded as
+`ROOT_NAME`) contains leading or trailing whitespace. Serialization
+shall terminate with this error before writing any output.
+
 No partial Serialized File shall be considered valid if serialization
 fails.
 
@@ -559,7 +566,9 @@ trailing blank lines), and standalone `CR` bytes outside content blocks.
 
 **E7 --- Header Mismatch**\
 The `TREESTREAM` version, `SPEC_VERSION`, or required header fields are
-unsupported or incorrect.
+missing, unsupported, or incorrect. A missing `ROOT_NAME` field, or a
+`ROOT_NAME` value that is empty or contains forward slashes, backslashes,
+or newline characters, shall terminate reconstruction with E7.
 
 **E8 --- Content Length Mismatch**\
 The number of bytes read does not match the declared `CONTENT_BYTES`
