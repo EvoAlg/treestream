@@ -53,8 +53,8 @@
   - Content blocks were valid RFC 4648 Base64 with decoded byte count equal to `CONTENT_BYTES`
   - Record ordering matched ordinal `PATH` sort
 - Gate E: PASS
-  - Verified E4, E7, E8, E9, E10, E11, E12
-  - Note: committed reconstruction fixtures in `fixtures/errors/` remain in pre-`v0.1.11` raw-content format; for E8/E9/E11 validation, normalized `v0.1.11` copies were generated under `artifacts/` from those committed fixtures without modifying fixture sources
+  - Verified E4, E5, E6, E7, E8, E9, E10, E11, E12
+  - Verification was performed directly against the committed `v0.1.11` fixtures in `fixtures/errors/`
 - Gate F: PASS
   - LF payload reconstruction: success
   - CRLF-structural payload reconstruction: success
