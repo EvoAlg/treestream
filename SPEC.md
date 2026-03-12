@@ -1,6 +1,6 @@
 # TreeStream Specification
 
-Version: v0.1.12 Status: Final
+Version: v0.1.13 Status: Final
 
 ## 1. Purpose
 
@@ -225,7 +225,7 @@ The Serialized File shall begin with the following header lines in the
 order shown:
 
 -   `TREESTREAM 1`
--   `SPEC_VERSION: v0.1.12`
+-   `SPEC_VERSION: v0.1.13`
 -   `ENCODING: UTF-8`
 -   `NEWLINES: LF`
 -   `RECORDS: FILE`
@@ -244,8 +244,9 @@ Root Directory (the final path component only, not the full path). The
 value shall be a non-empty string and shall not contain forward slashes
 (`/`), backslashes (`\`), or newline characters. It is derived
 deterministically from the Root Directory path provided at serialization
-time. If the derived name contains leading or trailing whitespace,
-serialization shall terminate with E5a.
+time. If the derived name contains leading or trailing whitespace, or
+contains any of the forbidden characters (`/`, `\`, newline), serialization
+shall terminate with E5a.
 
 ### 5.5 File Entry Record Format (Length-Prefixed)
 
@@ -330,7 +331,7 @@ base64-encoded as `SGk=`):
 Header:
 
 -   `TREESTREAM 1`
--   `SPEC_VERSION: v0.1.12`
+-   `SPEC_VERSION: v0.1.13`
 -   `ENCODING: UTF-8`
 -   `NEWLINES: LF`
 -   `RECORDS: FILE`
@@ -381,7 +382,7 @@ Before reconstruction begins, the system shall:
     5.4.
 -   Validate that `TREESTREAM 1` is present and supported.
 -   Validate that `SPEC_VERSION` equals the exact supported
-    specification version string `v0.1.12` (case-sensitive).
+    specification version string `v0.1.13` (case-sensitive).
 -   Validate that `ENCODING` is `UTF-8`.
 -   Validate that `NEWLINES` is `LF`.
 -   Validate that `RECORDS` equals `FILE` exactly (case-sensitive).
@@ -544,7 +545,8 @@ within the Root Directory.
 
 **E5a --- Invalid Root Directory Name**\
 The name of the Root Directory (the value that would be recorded as
-`ROOT_NAME`) contains leading or trailing whitespace. Serialization
+`ROOT_NAME`) contains leading or trailing whitespace, or contains any
+forbidden character (`/`, `\`, or a newline character). Serialization
 shall terminate with this error before writing any output.
 
 No partial Serialized File shall be considered valid if serialization
