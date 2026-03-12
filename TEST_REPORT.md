@@ -1,6 +1,6 @@
 # TreeStream Scenario and Acceptance Test Report
 
-- Date/time (local): 2026-03-10T21:14:04+11:00
+- Date/time (local): 2026-03-12T08:43:35+11:00
 - OS: Windows-10-10.0.19045-SP0
 - Python: 3.12.1
 - Shell: PowerShell 5.1
@@ -8,8 +8,8 @@
 
 ## Commands Executed
 
-- `python -m py_compile IMPLEMENTATION\treestream\__init__.py IMPLEMENTATION\treestream\format.py IMPLEMENTATION\treestream\serializer.py IMPLEMENTATION\treestream\reconstructor.py IMPLEMENTATION\treestream\cli.py IMPLEMENTATION\cli.py`
-- `python -` (inline scenario and acceptance runner; evidence written under `artifacts/`, summary in `artifacts/scenario_results.json`)
+- `python -m py_compile IMPLEMENTATION\treestream\__init__.py IMPLEMENTATION\treestream\version.py IMPLEMENTATION\treestream\format.py IMPLEMENTATION\treestream\serializer.py IMPLEMENTATION\treestream\reconstructor.py IMPLEMENTATION\treestream\cli.py IMPLEMENTATION\cli.py`
+- `python -` (inline scenario and acceptance runner for S01-S24 and Gates A-F)
 
 ## Scenario Results (`SCENARIOS.feature`)
 
@@ -36,25 +36,27 @@
 - S21: PASS
 - S22: PASS
 - S23: PASS
+- S24: PASS
 
 ## Acceptance Criteria Gate Summary (`ACCEPTANCE_CRITERIA.md`)
 
 - Gate A: PASS
-  - S01-S23 passed with zero failures.
+  - S01-S24 passed with zero failures.
 - Gate B: PASS
-  - SHA-256 run1: `5d41f33eee17c41363907795fe694ca7ded5032844337427821bcebb202396ff`
-  - SHA-256 run2: `5d41f33eee17c41363907795fe694ca7ded5032844337427821bcebb202396ff`
+  - SHA-256 run1: `18ef14f0ec25a77e6a2ed2a63c325d3e71327976ec787cd9db740390f6eea41b`
+  - SHA-256 run2: `18ef14f0ec25a77e6a2ed2a63c325d3e71327976ec787cd9db740390f6eea41b`
   - Binary compare: identical (`True`)
 - Gate C: PASS
-  - `fixtures/roundtrip/` and `artifacts/roundtrip_reconstructed/` had identical relative paths and byte content.
+  - `fixtures/roundtrip/` and the reconstructed `roundtrip/` subtree beneath the target directory had identical relative paths and byte content.
 - Gate D: PASS
-  - Header matched `v0.1.11`
+  - Header matched `v0.1.12`
+  - `ROOT_NAME: determinism` matched the serialized root directory name
   - Structural lines were LF-only
   - Content blocks were valid RFC 4648 Base64 with decoded byte count equal to `CONTENT_BYTES`
   - Record ordering matched ordinal `PATH` sort
 - Gate E: PASS
-  - Verified E4, E5, E6, E7, E8, E9, E10, E11, E12
-  - Verification was performed directly against the committed `v0.1.11` fixtures in `fixtures/errors/`
+  - Verified E4, E5, E5a, E6, E7, E8, E9, E10, E11, E12
+  - Self-verification used committed repository fixtures where available and temporary `v0.1.12` payloads for new `ROOT_NAME` and `E5a` cases
 - Gate F: PASS
   - LF payload reconstruction: success
   - CRLF-structural payload reconstruction: success
@@ -64,8 +66,8 @@
 
 ## Summary
 
-- Total scenarios: 23
-- Passed: 23
+- Total scenarios: 24
+- Passed: 24
 - Failed: 0
 - Skipped: 0
 
