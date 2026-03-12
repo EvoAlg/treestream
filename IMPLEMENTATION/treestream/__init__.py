@@ -1,11 +1,9 @@
-"""TreeStream implementation for SPEC.md v0.1.11."""
+"""TreeStream implementation for SPEC.md v0.1.13."""
 
 from .errors import TreeStreamError
 from .reconstructor import reconstruct
 from .serializer import serialize
-
-IMPLEMENTATION_VERSION = "v0.1.11"
-SPEC_VERSION = "v0.1.11"
+from .version import IMPLEMENTATION_VERSION, SPEC_VERSION
 
 __all__ = [
     "IMPLEMENTATION_VERSION",

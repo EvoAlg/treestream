@@ -14,9 +14,10 @@ from .format import (
     parse_line_normalized_lf,
     validate_serialized_path,
 )
+from .version import SPEC_VERSION
 
 
-def _parse_header(handle) -> None:
+def _parse_header(handle) -> str:
     op = "reconstruction"
     line1 = parse_line_normalized_lf(handle, op, eof_code="E6")
     if line1.startswith(b"TREESTREAM ") and line1 != b"TREESTREAM 1":
@@ -27,7 +28,7 @@ def _parse_header(handle) -> None:
     line2 = parse_line_normalized_lf(handle, op, eof_code="E6")
     if not line2.startswith(b"SPEC_VERSION: "):
         raise TreeStreamError("E6", op, "invalid header structure: SPEC_VERSION line malformed")
-    if line2 != b"SPEC_VERSION: v0.1.11":
+    if line2 != f"SPEC_VERSION: {SPEC_VERSION}".encode("ascii"):
         raise TreeStreamError("E7", op, "unsupported SPEC_VERSION")
 
     line3 = parse_line_normalized_lf(handle, op, eof_code="E6")
@@ -49,8 +50,25 @@ def _parse_header(handle) -> None:
         raise TreeStreamError("E7", op, "unsupported RECORDS value")
 
     line6 = parse_line_normalized_lf(handle, op, eof_code="E6")
-    if line6 != b"END_HEADER":
+    if line6 == b"END_HEADER":
+        raise TreeStreamError("E7", op, "missing ROOT_NAME header")
+    if not line6.startswith(b"ROOT_NAME: "):
+        raise TreeStreamError("E7", op, "missing or malformed ROOT_NAME header")
+    raw_root_name = line6[len(b"ROOT_NAME: ") :]
+    if raw_root_name == b"":
+        raise TreeStreamError("E7", op, "ROOT_NAME is empty")
+    try:
+        root_name = raw_root_name.decode("utf-8", errors="strict")
+    except UnicodeDecodeError as exc:
+        raise TreeStreamError("E7", op, "ROOT_NAME is not valid UTF-8") from exc
+    if "/" in root_name or "\\" in root_name or "\n" in root_name or "\r" in root_name:
+        raise TreeStreamError("E7", op, "ROOT_NAME contains invalid separator characters")
+
+    line7 = parse_line_normalized_lf(handle, op, eof_code="E6")
+    if line7 != b"END_HEADER":
         raise TreeStreamError("E6", op, "invalid header structure: missing END_HEADER")
+
+    return root_name
 
 
 def _parse_record_header(handle) -> tuple[str, int]:
@@ -201,15 +219,27 @@ def reconstruct(
 
     try:
         with open(src, "rb") as handle:
-            _parse_header(handle)
+            root_name = _parse_header(handle)
             parsed_records = _parse_all_records(handle)
-            records = _validate_paths_before_ordering(parsed_records, target_abs)
+            root_target_abs = (target_abs / root_name).resolve(strict=False)
+            try:
+                root_target_abs.relative_to(target_abs)
+            except ValueError as exc:
+                raise TreeStreamError("E7", "reconstruction", "ROOT_NAME escapes target directory", root_name) from exc
+            records = _validate_paths_before_ordering(parsed_records, root_target_abs)
 
             if not target_abs.exists():
                 try:
                     target_abs.mkdir(parents=True, exist_ok=True)
                 except OSError as exc:
                     raise TreeStreamError("E10", "reconstruction", "unable to create target directory", str(target_abs)) from exc
+            if root_target_abs.exists() and not root_target_abs.is_dir():
+                raise TreeStreamError("E10", "reconstruction", "root reconstruction path is not a directory", str(root_target_abs))
+            if not root_target_abs.exists():
+                try:
+                    root_target_abs.mkdir(parents=True, exist_ok=True)
+                except OSError as exc:
+                    raise TreeStreamError("E10", "reconstruction", "unable to create root reconstruction directory", str(root_target_abs)) from exc
 
             for record in records:
                 dst_path = record.dst_path

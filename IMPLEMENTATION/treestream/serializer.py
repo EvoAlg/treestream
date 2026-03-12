@@ -7,7 +7,8 @@ import tempfile
 from pathlib import Path
 
 from .errors import TreeStreamError
-from .format import HEADER_LINES, assert_windows, canonical_relative_path
+from .format import assert_windows, build_header_lines, canonical_relative_path, derive_root_name
+from .version import SPEC_VERSION
 
 _CHUNK_SIZE = 64 * 1024
 _REPARSE_POINT_ATTR = 0x0400
@@ -132,6 +133,7 @@ def serialize(root_directory: str | os.PathLike[str], output_file: str | os.Path
     if not root_abs.is_dir():
         raise TreeStreamError("E1", "serialization", "root path is not a directory", str(root))
 
+    root_name = derive_root_name(root_abs, "serialization")
     files = _collect_files(root_abs)
 
     out_path = Path(output_file)
@@ -148,7 +150,7 @@ def serialize(root_directory: str | os.PathLike[str], output_file: str | os.Path
 
         with os.fdopen(tmp_fd, "wb") as dst:
             tmp_fd = None
-            for line in HEADER_LINES:
+            for line in build_header_lines(SPEC_VERSION, root_name):
                 dst.write(line)
             for rel_path, file_path, size in files:
                 _write_record(dst, rel_path, file_path, size)

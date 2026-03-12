@@ -5,15 +5,6 @@ from pathlib import Path, PureWindowsPath
 
 from .errors import TreeStreamError
 
-HEADER_LINES = (
-    b"TREESTREAM 1\n",
-    b"SPEC_VERSION: v0.1.11\n",
-    b"ENCODING: UTF-8\n",
-    b"NEWLINES: LF\n",
-    b"RECORDS: FILE\n",
-    b"END_HEADER\n",
-)
-
 INVALID_COMPONENT_CHARS = frozenset('<>"|?*')
 RESERVED_DEVICE_NAMES = frozenset(
     ["CON", "PRN", "AUX", "NUL"] + [f"COM{i}" for i in range(10)] + [f"LPT{i}" for i in range(10)]
@@ -26,6 +17,18 @@ def encoded_content_length(content_bytes: int) -> int:
     return ((content_bytes + 2) // 3) * 4
 
 
+def build_header_lines(spec_version: str, root_name: str) -> tuple[bytes, ...]:
+    return (
+        b"TREESTREAM 1\n",
+        f"SPEC_VERSION: {spec_version}\n".encode("ascii"),
+        b"ENCODING: UTF-8\n",
+        b"NEWLINES: LF\n",
+        b"RECORDS: FILE\n",
+        f"ROOT_NAME: {root_name}\n".encode("utf-8"),
+        b"END_HEADER\n",
+    )
+
+
 def assert_windows(operation: str) -> None:
     if os.name != "nt":
         raise TreeStreamError("E5", operation, "Windows-only implementation")
@@ -33,6 +36,17 @@ def assert_windows(operation: str) -> None:
 
 def canonical_relative_path(root_abs: Path, file_abs: Path) -> str:
     return file_abs.relative_to(root_abs).as_posix()
+
+
+def derive_root_name(root_abs: Path, operation: str) -> str:
+    root_name = root_abs.name
+    if root_name == "":
+        raise TreeStreamError("E1", operation, "root directory must have a non-empty final path component", str(root_abs))
+    if root_name != root_name.strip():
+        raise TreeStreamError("E5a", operation, "root directory name has leading or trailing whitespace", str(root_abs))
+    if "/" in root_name or "\\" in root_name or "\n" in root_name or "\r" in root_name:
+        raise TreeStreamError("E5a", operation, "root directory name is invalid", str(root_abs))
+    return root_name
 
 
 def parse_line_strict_lf(handle, operation: str, eof_code: str = "E6") -> bytes:
