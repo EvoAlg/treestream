@@ -1,3 +1,0 @@
-Omega: Ω
-CJK: 漢字
-Emoji: 😀
