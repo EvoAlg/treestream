@@ -1,22 +1,22 @@
-# TreeStream Acceptance Criteria (SPEC v0.1.14)
+# TreeStream Acceptance Criteria (SPEC v0.1.12)
 
-Version pin: **v0.1.14**
+Version pin: **v0.1.12**
 
-This document defines the **mandatory acceptance gates** for TreeStream against **SPEC.md v0.1.14**.
-**All seven gates (A–G) must pass. Any single gate failing is an overall FAIL.**
+This document defines the **mandatory acceptance gates** for TreeStream against **SPEC.md v0.1.12**.
+**All six gates (A–F) must pass. Any single gate failing is an overall FAIL.**
 A reviewer must be able to verify each gate **using only the repository contents and local execution results**, without needing any knowledge of the generation process.
 
 ---
 
 ## Gate A — Scenario Validation (SCENARIOS.feature)
 
-**Pass condition:**  
+**Pass condition:**
 All scenarios defined in `SCENARIOS.feature` execute and pass with **zero failures** on a Windows environment using the repository's documented test runner and commands (as provided by the repository's test harness).
 
-**Fail condition:**  
+**Fail condition:**
 Any scenario fails, errors, is skipped, or cannot be executed.
 
-**Evidence to capture:**  
+**Evidence to capture:**
 - Test run output showing all scenarios passed.
 - A `TEST_REPORT.md` entry or section that records:
   - Date/time (local), machine/environment summary (Windows version, Python version)
@@ -27,7 +27,7 @@ Any scenario fails, errors, is skipped, or cannot be executed.
 
 ## Gate B — Deterministic Serialization Output (Byte-for-Byte)
 
-**Objective:**  
+**Objective:**
 For identical input directory trees, serialization must produce **byte-for-byte identical serialized files** across two runs.
 
 ### Fixed Determinism Fixture (must be used)
@@ -69,15 +69,15 @@ It must exist in the repo and contain **at minimum** the following structure and
    - Compute and record a cryptographic hash for both outputs (e.g., SHA-256).
    - Additionally, perform a binary compare.
 
-**Pass condition:**  
+**Pass condition:**
 - The two serialized outputs are **exactly identical byte-for-byte**, proven by:
   - Equal SHA-256 hashes, and
   - A successful binary compare (no differing bytes).
 
-**Fail condition:**  
+**Fail condition:**
 Any byte differs between the two serialized outputs.
 
-**Evidence to capture:**  
+**Evidence to capture:**
 - Commands used to serialize twice.
 - Hash values for both outputs (must match).
 - Binary compare result (must indicate identical).
@@ -86,7 +86,7 @@ Any byte differs between the two serialized outputs.
 
 ## Gate C — Round-Trip Integrity (Fixed Non-Trivial Fixture)
 
-**Objective:**  
+**Objective:**
 Reconstruction of a serialized directory must reproduce the original tree exactly in **structure and file contents**, for a fixture fixed in advance.
 
 ### Fixed Round-Trip Fixture (must be used)
@@ -123,32 +123,32 @@ The fixture contents must be **committed** and must not be altered during verifi
      - Identical file contents **byte-for-byte** for every file
    - Comparison must not rely on timestamps or filesystem metadata.
 
-**Pass condition:**  
+**Pass condition:**
 - Every file in the original fixture exists in the reconstructed tree at the same relative path, and
 - Every file's content matches **exactly** as bytes, and
 - No extra files exist in the reconstructed tree beyond those implied by the serialized file.
 
-**Fail condition:**  
+**Fail condition:**
 Any missing file, extra file, path mismatch, or any byte-level content mismatch.
 
-**Evidence to capture:**  
+**Evidence to capture:**
 - Commands used for serialize and reconstruct.
 - A recorded directory listing of both trees (relative paths).
 - A byte-level verification result (hash or binary compare per file, or an equivalent deterministic script output).
 
 ---
 
-## Gate D — Format Conformance to SPEC.md v0.1.14
+## Gate D — Format Conformance to SPEC.md v0.1.12
 
 **Objective:**
-The serialized output format must conform **exactly** to `SPEC.md v0.1.14`, including header, record structure, base64-encoded content blocks, declared original content lengths, and structural LF usage.
+The serialized output format must conform **exactly** to `SPEC.md v0.1.12`, including header, record structure, base64-encoded content blocks, declared original content lengths, and structural LF usage.
 
 ### Header conformance checks
 
-A serialized file must begin with these exact header lines in order (LF line endings), matching `SPEC.md v0.1.14`:
+A serialized file must begin with these exact header lines in order (LF line endings), matching `SPEC.md v0.1.12`:
 
 - `TREESTREAM 1`
-- `SPEC_VERSION: v0.1.14`
+- `SPEC_VERSION: v0.1.12`
 - `ENCODING: UTF-8`
 - `NEWLINES: LF`
 - `RECORDS: FILE`
@@ -164,7 +164,7 @@ Header matches exactly, including:
 
 ### Record structure checks (each file record)
 
-Each record must follow the exact structure defined in `SPEC.md v0.1.14` Section 5.5:
+Each record must follow the exact structure defined in `SPEC.md v0.1.12` Section 5.5:
 
 1. `FILE`
 2. `PATH: <relative_path>`
@@ -210,7 +210,7 @@ Any deviation from the spec structure, markers, spacing, ordering, base64 encodi
 ## Gate E — Error Handling and E-Code Mapping to SPEC.md
 
 **Objective:**
-Observed error behavior must map to the error codes and conditions defined in `SPEC.md v0.1.14`, and messages must be explicit.
+Observed error behavior must map to the error codes and conditions defined in `SPEC.md v0.1.12`, and messages must be explicit.
 
 ### Scope
 
@@ -265,7 +265,7 @@ Any of the following:
 
 ## Gate F — CRLF Tolerance for Reconstruction Input
 
-**Objective:**  
+**Objective:**
 Validate the core transport workflow where serialized plain text is passed through channels (email body or clipboard) that may convert structural newlines from LF to CRLF.
 
 ### Verification procedure (must be followed exactly)
@@ -283,70 +283,19 @@ Validate the core transport workflow where serialized plain text is passed throu
    - Byte-for-byte identical file contents
 7. Re-serialize at least one reconstructed output and verify serialized structural newlines are LF-only.
 
-**Pass condition:**  
+**Pass condition:**
 - Reconstruction succeeds for LF, CRLF structural-input, and trailing-blank-lines variants.
 - All reconstructed trees are byte-for-byte identical.
 - Serialization output remains LF-only.
 
-**Fail condition:**  
+**Fail condition:**
 Any reconstruction failure caused by CRLF structural input or trailing blank lines, any content/path mismatch between variants, or any serializer output containing structural CRLF.
 
-**Evidence to capture:**  
+**Evidence to capture:**
 - Commands/scripts used to generate CRLF-variant and trailing-blank-lines-variant inputs.
 - Reconstruction outputs for all three input variants.
 - Byte-level comparison result of reconstructed trees.
 - Verification output demonstrating LF-only structural newlines in serializer output.
-
----
-
-## Gate G — Exclusion Filter (FR13, Section 9.10)
-
-**Objective:**
-Validate that the `--exclude` option correctly omits matching files and directories from serialization without altering the format or breaking determinism.
-
-### Verification requirements
-
-1. The `serialize` command shall accept `--exclude PATTERN` (repeatable). Supplying no `--exclude` flag shall produce output identical to the behaviour of prior versions.
-
-2. Verification must use a test directory that contains:
-   - At least one text file that should be included.
-   - At least one directory whose name matches an exclusion pattern (e.g., `__pycache__`) containing files.
-   - At least one file whose name matches an exclusion pattern (e.g., `*.pyc`).
-
-3. Run serialization with the appropriate `--exclude` flags and verify:
-   - Excluded files produce no record in the serialized output.
-   - Excluded directories produce no records for any files they contain.
-   - Included files are present with correct content.
-
-4. Run serialization twice with identical inputs and identical `--exclude` flags and verify byte-for-byte identical output (determinism with exclusions).
-
-5. Run serialization with `--exclude` patterns that match nothing in the input directory. Verify the output is byte-for-byte identical to the same serialization without any `--exclude` flag.
-
-### Pass condition
-
-- The `--exclude` flag is accepted by the CLI.
-- Entries matching an exclusion pattern are absent from the serialized output.
-- No error is raised for excluded entries regardless of their content type.
-- Excluded directory subtrees are not descended into.
-- Output with exclusions is a valid TreeStream file conforming to Sections 5 and 8.
-- Two runs with identical inputs and identical exclusion patterns produce byte-for-byte identical output.
-- A run with non-matching exclusion patterns is byte-for-byte identical to a run with no exclusions.
-
-### Fail condition
-
-Any of the following:
-- Excluded entries appear as records in the output.
-- An error is raised for a correctly excluded entry.
-- Included entries are missing from the output.
-- Output is not a valid TreeStream file.
-- Determinism is broken when exclusion patterns are supplied.
-
-**Evidence to capture:**
-- Command(s) used, including `--exclude` arguments.
-- Directory listing of test input showing both included and excluded entries.
-- Serialized output listing showing records present (included) and absent (excluded).
-- Hash comparison proving determinism across two runs with identical exclusions.
-- Hash comparison proving identical output between a non-matching-exclusion run and a no-exclusion run.
 
 ---
 
@@ -382,5 +331,5 @@ Any of the following:
 
 ## Acceptance Decision
 
-**ACCEPTED** only if Gates **A, B, C, D, E, F, and G** are all **PASS** with captured evidence.
+**ACCEPTED** only if Gates **A, B, C, D, E, and F** are all **PASS** with captured evidence.
 Otherwise: **REJECTED**.

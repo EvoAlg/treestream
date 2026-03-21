@@ -1,6 +1,6 @@
 # TreeStream Specification
 
-Version: v0.1.14 Status: Final
+Version: v0.1.13 Status: Final
 
 ## 1. Purpose
 
@@ -74,14 +74,6 @@ The directory into which a serialized representation is reconstructed.
 The property that reconstruct(serialize(directory)) produces a directory
 tree identical to the original, including structure and file contents.
 
-**Exclusion Pattern**\
-A name-based glob pattern supplied to the serializer at invocation time.
-An entry (file or directory) whose name matches any Exclusion Pattern
-shall be omitted from serialization. Pattern matching uses Python's
-`fnmatch` module applied to the entry name only (not the full relative
-path). If no Exclusion Patterns are specified, no entries are excluded
-and behaviour is identical to prior versions.
-
 ## 3. Functional Requirements
 
 **FR1 --- Root Directory Input**\
@@ -133,14 +125,6 @@ Serializing a directory and subsequently reconstructing it shall produce
 a directory tree identical in structure and file contents to the
 original.
 
-**FR13 --- Exclusion Filter**\
-The system shall accept zero or more Exclusion Patterns for the serialize
-operation. Any file or directory entry whose name matches any Exclusion
-Pattern shall be omitted from serialization. When a directory entry is
-excluded, its entire subtree is skipped without descent. Excluded entries
-produce no error and generate no record in the Serialized File. This is
-the only permitted form of silent omission during serialization.
-
 ## 4. Non-Functional Requirements
 
 **NFR1 --- Determinism**\
@@ -175,9 +159,7 @@ prohibited.
 
 **NFR8 --- Predictable Failure Behaviour**\
 The system shall fail deterministically when encountering unsupported
-files, permission errors, or encoding violations. Entries explicitly
-excluded via Exclusion Patterns (FR13) are omitted silently; this is
-the sole permitted exception to NFR7 (Error Transparency).
+files, permission errors, or encoding violations.
 
 **NFR9 --- Standard Library Constraint**\
 The implementation shall use only the Python 3.11+ standard library.
@@ -243,7 +225,7 @@ The Serialized File shall begin with the following header lines in the
 order shown:
 
 -   `TREESTREAM 1`
--   `SPEC_VERSION: v0.1.14`
+-   `SPEC_VERSION: v0.1.13`
 -   `ENCODING: UTF-8`
 -   `NEWLINES: LF`
 -   `RECORDS: FILE`
@@ -349,7 +331,7 @@ base64-encoded as `SGk=`):
 Header:
 
 -   `TREESTREAM 1`
--   `SPEC_VERSION: v0.1.14`
+-   `SPEC_VERSION: v0.1.13`
 -   `ENCODING: UTF-8`
 -   `NEWLINES: LF`
 -   `RECORDS: FILE`
@@ -400,7 +382,7 @@ Before reconstruction begins, the system shall:
     5.4.
 -   Validate that `TREESTREAM 1` is present and supported.
 -   Validate that `SPEC_VERSION` equals the exact supported
-    specification version string `v0.1.14` (case-sensitive).
+    specification version string `v0.1.13` (case-sensitive).
 -   Validate that `ENCODING` is `UTF-8`.
 -   Validate that `NEWLINES` is `LF`.
 -   Validate that `RECORDS` equals `FILE` exactly (case-sensitive).
@@ -639,8 +621,7 @@ Windows environments.
 
 Identical input directory trees are defined as having: - Identical
 relative paths - Identical file contents at the byte level - Identical
-directory structure - Identical Exclusion Pattern sets (same patterns,
-regardless of order)
+directory structure
 
 File metadata such as timestamps, permissions, and filesystem attributes
 shall not influence serialization output.
@@ -659,9 +640,7 @@ enumeration order.
 The system shall: - Collect all eligible file paths. The traversal shall
 include all files regardless of Windows filesystem attributes such as
 Hidden, System, or Read-only, provided they meet the Text File
-definition in Section 2 and are not excluded by an Exclusion Pattern
-(see Section 9.10). Directory entries matching an Exclusion Pattern
-shall not be descended into. - Canonicalise them as Relative Paths. The Relative Path shall be derived by calling Path.relative_to() on the absolute file path with the absolute Root Directory path, then converting the result to a forward-slash string using as_posix(). No Unicode normalisation shall be applied to the resulting string. - Sort them deterministically using ordinal Unicode code point ordering
+definition in Section 2. - Canonicalise them as Relative Paths. The Relative Path shall be derived by calling Path.relative_to() on the absolute file path with the absolute Root Directory path, then converting the result to a forward-slash string using as_posix(). No Unicode normalisation shall be applied to the resulting string. - Sort them deterministically using ordinal Unicode code point ordering
 (case-sensitive) over the complete Relative Path string (flat string
 comparison, not component-based). - Serialize records strictly in that
 sorted order.
@@ -744,8 +723,8 @@ base64 encoding of content blocks (see Section 5.5).
 ### 9.5 No Metadata Preservation
 
 The system shall not preserve or reconstruct filesystem metadata,
-including but not limited to: - File timestamps - File permissions -
-Extended attributes - Alternate data streams
+including but not limited to: - File creation times - Last-modified
+times - File permissions - Extended attributes - Alternate data streams
 
 Only directory structure and file contents are within scope.
 
@@ -769,31 +748,6 @@ format and determinism rules defined in Sections 5 and 8.
 Version 1 does not require a graphical user interface.\
 Command-line execution or equivalent programmatic invocation is
 sufficient.
-
-### 9.10 Exclusion Filter Behaviour
-
-The exclusion filter is an optional serialization-time feature governed
-by the following rules:
-
-- Zero or more Exclusion Patterns may be supplied; when none are
-  supplied the system behaves identically to prior versions.
-- Each Exclusion Pattern is matched against the **name** of each
-  filesystem entry (file or directory) using Python's `fnmatch.fnmatch`
-  function. The match is performed against the entry name only, not
-  against any partial or full relative path.
-- If an entry's name matches any supplied pattern, that entry is
-  excluded. For file entries, no record is written. For directory
-  entries, the entire subtree rooted at that directory is skipped
-  without descent.
-- Pattern matching is case-sensitive on the entry name, consistent with
-  the ordinal Unicode ordering used elsewhere in the specification.
-- Exclusion is applied during traversal, before UTF-8 validation.
-  Excluded entries are never validated for encoding correctness.
-- The Serialized File produced with exclusions applied is a valid
-  TreeStream file containing only the non-excluded entries, conforming
-  fully to Sections 5 and 8.
-- Exclusion patterns do not alter the serialized format in any way;
-  they control only which entries are presented for serialization.
 
 ## 10. Out of Scope
 
