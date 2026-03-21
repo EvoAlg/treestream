@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import binascii
 import codecs
+import fnmatch
 import os
 import tempfile
 from pathlib import Path
@@ -26,9 +27,10 @@ def _is_reparse_point(entry) -> bool:
     return bool(getattr(stat_result, "st_file_attributes", 0) & _REPARSE_POINT_ATTR)
 
 
-def _collect_files(root_abs: Path) -> list[tuple[str, Path, int]]:
+def _collect_files(root_abs: Path, exclude: list[str] | None = None) -> list[tuple[str, Path, int]]:
     stack = [root_abs]
     collected: list[tuple[str, Path, int]] = []
+    patterns = exclude or []
 
     while stack:
         current = stack.pop()
@@ -42,6 +44,8 @@ def _collect_files(root_abs: Path) -> list[tuple[str, Path, int]]:
 
         dirs: list[Path] = []
         for entry in entries:
+            if any(fnmatch.fnmatch(entry.name, pattern) for pattern in patterns):
+                continue
             if _is_reparse_point(entry):
                 raise TreeStreamError("E5", "serialization", "reparse point encountered", entry.path)
             try:
@@ -117,7 +121,11 @@ def _write_record(handle, rel_path: str, file_path: Path, declared_size: int) ->
     handle.write(b"\nEND_CONTENT\nEND_FILE\n")
 
 
-def serialize(root_directory: str | os.PathLike[str], output_file: str | os.PathLike[str]) -> None:
+def serialize(
+    root_directory: str | os.PathLike[str],
+    output_file: str | os.PathLike[str],
+    exclude: list[str] | None = None,
+) -> None:
     assert_windows("serialization")
 
     root = Path(root_directory)
@@ -134,7 +142,7 @@ def serialize(root_directory: str | os.PathLike[str], output_file: str | os.Path
         raise TreeStreamError("E1", "serialization", "root path is not a directory", str(root))
 
     root_name = derive_root_name(root_abs, "serialization")
-    files = _collect_files(root_abs)
+    files = _collect_files(root_abs, exclude=exclude)
 
     out_path = Path(output_file)
     out_parent = out_path.parent if out_path.parent != Path("") else Path(".")

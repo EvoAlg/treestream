@@ -18,6 +18,7 @@ def build_parser() -> argparse.ArgumentParser:
     serialize_cmd = subparsers.add_parser("serialize", help="Serialize a root directory to a TreeStream file")
     serialize_cmd.add_argument("root_directory")
     serialize_cmd.add_argument("output_file")
+    serialize_cmd.add_argument("--exclude", action="append", dest="exclude", default=[])
 
     reconstruct_cmd = subparsers.add_parser("reconstruct", help="Reconstruct a TreeStream file into a target directory")
     reconstruct_cmd.add_argument("serialized_file")
@@ -37,7 +38,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         if args.command == "serialize":
-            serialize(args.root_directory, args.output_file)
+            serialize(args.root_directory, args.output_file, exclude=args.exclude)
         elif args.command == "reconstruct":
             reconstruct(args.serialized_file, args.target_directory, overwrite=args.overwrite)
         else:
