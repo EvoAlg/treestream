@@ -9,10 +9,10 @@
 
 ## Commands Executed
 
-- `python -m py_compile IMPLEMENTATION\treestream\__init__.py IMPLEMENTATION\treestream\version.py IMPLEMENTATION\treestream\format.py IMPLEMENTATION\treestream\serializer.py IMPLEMENTATION\treestream\reconstructor.py IMPLEMENTATION\treestream\cli.py IMPLEMENTATION\cli.py`
+- `python -m py_compile IMPLEMENTATION\treestream\__init__.py IMPLEMENTATION\treestream\version.py IMPLEMENTATION\treestream\format.py IMPLEMENTATION\treestream\serializer.py IMPLEMENTATION\treestream\reconstructor.py IMPLEMENTATION\treestream\cli.py`
 - `python -` (inline scenario and acceptance runner for S01-S24 and Gates A-F)
-- `python -m py_compile IMPLEMENTATION\treestream\__init__.py IMPLEMENTATION\treestream\version.py IMPLEMENTATION\treestream\format.py IMPLEMENTATION\treestream\serializer.py IMPLEMENTATION\treestream\reconstructor.py IMPLEMENTATION\treestream\cli.py IMPLEMENTATION\cli.py IMPLEMENTATION\test_exclusion_filter.py`
-- `$env:PYTHONPATH='IMPLEMENTATION'; python -m unittest -v IMPLEMENTATION.test_exclusion_filter`
+- `python -m py_compile IMPLEMENTATION\treestream\__init__.py IMPLEMENTATION\treestream\version.py IMPLEMENTATION\treestream\format.py IMPLEMENTATION\treestream\serializer.py IMPLEMENTATION\treestream\reconstructor.py IMPLEMENTATION\treestream\cli.py tests\test_exclusion_filter.py`
+- `$env:PYTHONPATH='IMPLEMENTATION'; python -m unittest -v tests.test_exclusion_filter`
 - `python -` (inline Gate G evidence generator writing `artifacts/gate_g_*.treestream`)
 
 ## Scenario Results (`SCENARIOS.feature`)
