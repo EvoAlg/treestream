@@ -1,22 +1,22 @@
-# TreeStream Acceptance Criteria (SPEC v0.1.16)
+# TreeStream Acceptance Criteria (SPEC v0.1.14)
 
-Version pin: **v0.1.16**
+Version pin: **v0.1.14**
 
-This document defines the **mandatory acceptance gates** for TreeStream against **SPEC.md v0.1.16**.
-**All eight gates (A–H) must pass. Any single gate failing is an overall FAIL.**
+This document defines the **mandatory acceptance gates** for TreeStream against **SPEC.md v0.1.14**.
+**All seven gates (A–G) must pass. Any single gate failing is an overall FAIL.**
 A reviewer must be able to verify each gate **using only the repository contents and local execution results**, without needing any knowledge of the generation process.
 
 ---
 
 ## Gate A — Scenario Validation (SCENARIOS.feature)
 
-**Pass condition:**  
+**Pass condition:**
 All scenarios defined in `SCENARIOS.feature` execute and pass with **zero failures** on a Windows environment using the repository's documented test runner and commands (as provided by the repository's test harness).
 
-**Fail condition:**  
+**Fail condition:**
 Any scenario fails, errors, is skipped, or cannot be executed.
 
-**Evidence to capture:**  
+**Evidence to capture:**
 - Test run output showing all scenarios passed.
 - A `TEST_REPORT.md` entry or section that records:
   - Date/time (local), machine/environment summary (Windows version, Python version)
@@ -27,7 +27,7 @@ Any scenario fails, errors, is skipped, or cannot be executed.
 
 ## Gate B — Deterministic Serialization Output (Byte-for-Byte)
 
-**Objective:**  
+**Objective:**
 For identical input directory trees, serialization must produce **byte-for-byte identical serialized files** across two runs.
 
 ### Fixed Determinism Fixture (must be used)
@@ -69,15 +69,15 @@ It must exist in the repo and contain **at minimum** the following structure and
    - Compute and record a cryptographic hash for both outputs (e.g., SHA-256).
    - Additionally, perform a binary compare.
 
-**Pass condition:**  
+**Pass condition:**
 - The two serialized outputs are **exactly identical byte-for-byte**, proven by:
   - Equal SHA-256 hashes, and
   - A successful binary compare (no differing bytes).
 
-**Fail condition:**  
+**Fail condition:**
 Any byte differs between the two serialized outputs.
 
-**Evidence to capture:**  
+**Evidence to capture:**
 - Commands used to serialize twice.
 - Hash values for both outputs (must match).
 - Binary compare result (must indicate identical).
@@ -86,7 +86,7 @@ Any byte differs between the two serialized outputs.
 
 ## Gate C — Round-Trip Integrity (Fixed Non-Trivial Fixture)
 
-**Objective:**  
+**Objective:**
 Reconstruction of a serialized directory must reproduce the original tree exactly in **structure and file contents**, for a fixture fixed in advance.
 
 ### Fixed Round-Trip Fixture (must be used)
@@ -123,32 +123,32 @@ The fixture contents must be **committed** and must not be altered during verifi
      - Identical file contents **byte-for-byte** for every file
    - Comparison must not rely on timestamps or filesystem metadata.
 
-**Pass condition:**  
+**Pass condition:**
 - Every file in the original fixture exists in the reconstructed tree at the same relative path, and
 - Every file's content matches **exactly** as bytes, and
 - No extra files exist in the reconstructed tree beyond those implied by the serialized file.
 
-**Fail condition:**  
+**Fail condition:**
 Any missing file, extra file, path mismatch, or any byte-level content mismatch.
 
-**Evidence to capture:**  
+**Evidence to capture:**
 - Commands used for serialize and reconstruct.
 - A recorded directory listing of both trees (relative paths).
 - A byte-level verification result (hash or binary compare per file, or an equivalent deterministic script output).
 
 ---
 
-## Gate D — Format Conformance to SPEC.md v0.1.15
+## Gate D — Format Conformance to SPEC.md v0.1.14
 
 **Objective:**
-The serialized output format must conform **exactly** to `SPEC.md v0.1.16`, including header, record structure, base64-encoded content blocks, declared original content lengths, and structural LF usage.
+The serialized output format must conform **exactly** to `SPEC.md v0.1.14`, including header, record structure, base64-encoded content blocks, declared original content lengths, and structural LF usage.
 
 ### Header conformance checks
 
-A serialized file must begin with these exact header lines in order (LF line endings), matching `SPEC.md v0.1.16`:
+A serialized file must begin with these exact header lines in order (LF line endings), matching `SPEC.md v0.1.14`:
 
 - `TREESTREAM 1`
-- `SPEC_VERSION: v0.1.16`
+- `SPEC_VERSION: v0.1.14`
 - `ENCODING: UTF-8`
 - `NEWLINES: LF`
 - `RECORDS: FILE`
@@ -164,7 +164,7 @@ Header matches exactly, including:
 
 ### Record structure checks (each file record)
 
-Each record must follow the exact structure defined in `SPEC.md v0.1.16` Section 5.5:
+Each record must follow the exact structure defined in `SPEC.md v0.1.14` Section 5.5:
 
 1. `FILE`
 2. `PATH: <relative_path>`
@@ -210,12 +210,12 @@ Any deviation from the spec structure, markers, spacing, ordering, base64 encodi
 ## Gate E — Error Handling and E-Code Mapping to SPEC.md
 
 **Objective:**
-Observed error behavior must map to the error codes and conditions defined in `SPEC.md v0.1.16`, and messages must be explicit.
+Observed error behavior must map to the error codes and conditions defined in `SPEC.md v0.1.14`, and messages must be explicit.
 
 ### Scope
 
 This gate applies to both operations:
-- Serialization errors (E1–E5, E5a, E13)
+- Serialization errors (E1–E5, E5a)
 - Reconstruction errors (E6–E12)
 
 ### Verification requirements
@@ -265,7 +265,7 @@ Any of the following:
 
 ## Gate F — CRLF Tolerance for Reconstruction Input
 
-**Objective:**  
+**Objective:**
 Validate the core transport workflow where serialized plain text is passed through channels (email body or clipboard) that may convert structural newlines from LF to CRLF.
 
 ### Verification procedure (must be followed exactly)
@@ -283,15 +283,15 @@ Validate the core transport workflow where serialized plain text is passed throu
    - Byte-for-byte identical file contents
 7. Re-serialize at least one reconstructed output and verify serialized structural newlines are LF-only.
 
-**Pass condition:**  
+**Pass condition:**
 - Reconstruction succeeds for LF, CRLF structural-input, and trailing-blank-lines variants.
 - All reconstructed trees are byte-for-byte identical.
 - Serialization output remains LF-only.
 
-**Fail condition:**  
+**Fail condition:**
 Any reconstruction failure caused by CRLF structural input or trailing blank lines, any content/path mismatch between variants, or any serializer output containing structural CRLF.
 
-**Evidence to capture:**  
+**Evidence to capture:**
 - Commands/scripts used to generate CRLF-variant and trailing-blank-lines-variant inputs.
 - Reconstruction outputs for all three input variants.
 - Byte-level comparison result of reconstructed trees.
@@ -365,7 +365,7 @@ Any of the following:
 - Ensure reconstruction does not create extra files beyond those in the serialized representation.
 
 ### Notes for Gate E (E-code Mapping)
-- The reviewer must verify **correctness** by comparing observed failures to SPEC-defined conditions (E1–E5, E5a, E13, E6–E12), not by checking that "an error happened."
+- The reviewer must verify **correctness** by comparing observed failures to SPEC-defined conditions (E1–E5, E5a, E6–E12), not by checking that "an error happened."
 - Be careful with ambiguous OS-dependent errors:
   - The fixture design must make the triggering condition deterministic (e.g., explicit invalid PATH in serialized file for E9; explicit header mismatch for E7).
 - **E5a**: Triggered at serialization time when the root directory name has leading or trailing whitespace. The triggering fixture must use a directory whose final path component has leading or trailing whitespace.
@@ -378,81 +378,9 @@ Any of the following:
 - Content blocks are opaque bytes and must not be newline-normalized.
 - Validation should explicitly prove that serializer output is still LF-only after successful reconstruction.
 
-### Notes for Gate H (.treestreamignore)
-- The `.treestreamignore` file must never appear as a record in the serialized output regardless of its contents.
-- Verify the merge behaviour by confirming that patterns from both `--exclude` and `.treestreamignore` suppress the correct entries.
-- An empty `.treestreamignore` must not change the output compared to no ignore file being present.
-- Comment lines (beginning with `#`) and blank lines must never be treated as patterns.
-- Determinism must hold: identical `.treestreamignore` content and identical `--exclude` flags produce byte-for-byte identical output across runs.
-- A `.treestreamignore` in a subdirectory must not be recognised as an ignore file; it must be serialized normally (unless excluded by another pattern).
-- **E13 (not E4)**: A `.treestreamignore` file containing non-UTF-8 bytes must trigger E13, not E4. E4 applies only to content files during traversal. The error message must explicitly name `.treestreamignore` as the source and state that it could not be read as UTF-8. Verify that no output file is written when E13 is triggered.
-
----
-
-## Gate H — Ignore File Support (FR14, Section 9.11)
-
-**Objective:**
-Validate that `.treestreamignore` is correctly read, parsed, and applied during serialization, and that the file itself is never serialized.
-
-### Verification requirements
-
-1. The root directory must contain a `.treestreamignore` file for positive tests. The file must not be present (or must be removed) for baseline comparison runs.
-
-2. Verification must cover:
-   - At least one text file whose name matches a pattern in `.treestreamignore` — that file must be absent from the serialized output.
-   - At least one directory whose name matches a pattern in `.treestreamignore` — no records for any of its contents must appear in the serialized output.
-   - At least one text file whose name does not match any pattern — that file must be present in the serialized output.
-   - Comment lines (lines beginning with `#`) and blank lines in `.treestreamignore` must not be treated as patterns.
-   - An empty `.treestreamignore` must produce output byte-for-byte identical to serializing the same directory with no `.treestreamignore` present.
-   - `.treestreamignore` itself must not appear as a record in the serialized output.
-
-3. Merge verification: serialize a directory with both a `.treestreamignore` containing one set of patterns and `--exclude` supplying a different pattern. Verify that both pattern sets suppress their respective entries and that included entries are present.
-
-4. Determinism: run serialization twice on the same directory with the same `.treestreamignore` and the same `--exclude` flags. Verify byte-for-byte identical output.
-
-5. Subdirectory ignore files are not recognised: place a `.treestreamignore` file inside a subdirectory. Verify it is serialized as a normal file (assuming it is valid UTF-8 and not otherwise excluded).
-
-6. Invalid UTF-8 in `.treestreamignore` (S36): provide a root directory where `.treestreamignore` contains bytes that are not valid UTF-8. Verify that serialization terminates with E13, that the error message names `.treestreamignore` as the source, and that no output file is written.
-
-### Pass condition
-
-- Entries matching patterns from `.treestreamignore` are absent from the serialized output.
-- No error is raised for entries excluded via `.treestreamignore`.
-- `.treestreamignore` itself is absent from the serialized output in all cases.
-- Comment lines and blank lines in `.treestreamignore` produce no exclusion effect.
-- An empty `.treestreamignore` produces byte-for-byte identical output to a run with no `.treestreamignore`.
-- Patterns from `.treestreamignore` and `--exclude` are merged and both are applied.
-- Serialization with a `.treestreamignore` is deterministic (byte-for-byte identical across two runs).
-- A `.treestreamignore` in a subdirectory is treated as a normal file and serialized (unless separately excluded).
-- A non-UTF-8 `.treestreamignore` triggers E13 (not E4) and no output file is written.
-- Output is a valid TreeStream file conforming to Sections 5 and 8.
-
-### Fail condition
-
-Any of the following:
-- A `.treestreamignore` pattern fails to exclude a matching entry.
-- `.treestreamignore` itself appears as a record in the serialized output.
-- A comment or blank line in `.treestreamignore` causes an entry to be incorrectly excluded.
-- An empty `.treestreamignore` changes the serialized output compared to no ignore file.
-- Patterns from `--exclude` or `.treestreamignore` are not applied when both are present.
-- Determinism is broken across two runs with the same inputs.
-- A `.treestreamignore` in a subdirectory is silently ignored rather than serialized.
-- A non-UTF-8 `.treestreamignore` triggers E4 instead of E13, or triggers no error, or leaves a partial output file.
-- Output is not a valid TreeStream file.
-
-**Evidence to capture:**
-- Directory listing of the test input showing included entries, excluded entries, and the `.treestreamignore` file.
-- Content of the `.treestreamignore` file used.
-- Serialized output listing confirming presence of included records and absence of excluded records and the `.treestreamignore` record.
-- For the merge test: `--exclude` flag(s) used alongside `.treestreamignore` content, showing both pattern sources suppress their respective entries.
-- For the empty-file test: byte-level comparison result proving identical output to the no-ignore-file baseline.
-- Hash comparison proving determinism across two runs with identical inputs.
-- Evidence that a `.treestreamignore` in a subdirectory is serialized normally.
-- For the E13 test (S36): full error output captured verbatim, confirming E13 code and `.treestreamignore` identified in the message; confirmation that no output file was written.
-
 ---
 
 ## Acceptance Decision
 
-**ACCEPTED** only if Gates **A, B, C, D, E, F, G, and H** are all **PASS** with captured evidence.
+**ACCEPTED** only if Gates **A, B, C, D, E, F, and G** are all **PASS** with captured evidence.
 Otherwise: **REJECTED**.

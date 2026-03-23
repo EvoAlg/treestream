@@ -1,4 +1,4 @@
-"""TreeStream implementation for SPEC.md v0.1.14."""
+"""TreeStream implementation for SPEC.md v0.1.16."""
 
 from .errors import TreeStreamError
 from .reconstructor import reconstruct

@@ -288,11 +288,3 @@ Feature: TreeStream Serialization and Reconstruction
     And the root directory contains an empty ".treestreamignore" file
     When the directory is serialized without any --exclude flag
     Then the serialized output (excluding the absence of any .treestreamignore record) is byte-for-byte identical to serializing the same directory with no ".treestreamignore" present
-
-  Scenario: S36 — .treestreamignore that cannot be read as UTF-8 triggers E13
-    Given a root directory containing at least one text file
-    And the root directory contains a ".treestreamignore" file whose bytes are not valid UTF-8
-    When serialization is attempted
-    Then serialization terminates with error code E13
-    And the error message identifies ".treestreamignore" as the source of the failure
-    And no output file is written

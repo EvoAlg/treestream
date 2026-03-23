@@ -1,6 +1,6 @@
 # TreeStream Specification
 
-Version: v0.1.16 Status: Final
+Version: v0.1.15 Status: Final
 
 ## 1. Purpose
 
@@ -197,9 +197,7 @@ prohibited.
 The system shall fail deterministically when encountering unsupported
 files, permission errors, or encoding violations. Entries explicitly
 excluded via Exclusion Patterns (FR13, FR14) are omitted silently; this
-is the sole permitted exception to NFR7 (Error Transparency). All other
-failures, including E13 (Ignore File Read Error), shall be explicit and
-descriptive.
+is the sole permitted exception to NFR7 (Error Transparency).
 
 **NFR9 --- Standard Library Constraint**\
 The implementation shall use only the Python 3.11+ standard library.
@@ -265,7 +263,7 @@ The Serialized File shall begin with the following header lines in the
 order shown:
 
 -   `TREESTREAM 1`
--   `SPEC_VERSION: v0.1.16`
+-   `SPEC_VERSION: v0.1.15`
 -   `ENCODING: UTF-8`
 -   `NEWLINES: LF`
 -   `RECORDS: FILE`
@@ -371,7 +369,7 @@ base64-encoded as `SGk=`):
 Header:
 
 -   `TREESTREAM 1`
--   `SPEC_VERSION: v0.1.16`
+-   `SPEC_VERSION: v0.1.15`
 -   `ENCODING: UTF-8`
 -   `NEWLINES: LF`
 -   `RECORDS: FILE`
@@ -422,7 +420,7 @@ Before reconstruction begins, the system shall:
     5.4.
 -   Validate that `TREESTREAM 1` is present and supported.
 -   Validate that `SPEC_VERSION` equals the exact supported
-    specification version string `v0.1.16` (case-sensitive).
+    specification version string `v0.1.15` (case-sensitive).
 -   Validate that `ENCODING` is `UTF-8`.
 -   Validate that `NEWLINES` is `LF`.
 -   Validate that `RECORDS` equals `FILE` exactly (case-sensitive).
@@ -588,15 +586,6 @@ The name of the Root Directory (the value that would be recorded as
 `ROOT_NAME`) contains leading or trailing whitespace, or contains any
 forbidden character (`/`, `\`, or a newline character). Serialization
 shall terminate with this error before writing any output.
-
-**E13 --- Ignore File Read Error**\
-A `.treestreamignore` file exists at the Root Directory but cannot be
-read as UTF-8 text. This error is distinct from E4 (which applies to
-content files): `.treestreamignore` is a configuration file read for
-pattern extraction only and is never serialized as a content file.
-Serialization shall terminate with this error before traversal begins.
-The error message shall identify `.treestreamignore` as the source of
-the failure and state that it could not be read as UTF-8.
 
 No partial Serialized File shall be considered valid if serialization
 fails.
@@ -863,9 +852,7 @@ governed by the following rules:
   case-sensitively (see Section 9.10).
 - The `.treestreamignore` file shall be read using Python's UTF-8 codec
   with the strict error handler. If the file cannot be decoded as UTF-8,
-  serialization shall terminate with E13. E4 (Encoding Violation) applies
-  only to content files during traversal and does not apply to
-  `.treestreamignore`.
+  serialization shall terminate with E4.
 
 ## 10. Out of Scope
 

@@ -1,6 +1,6 @@
 # TreeStream Specification
 
-Version: v0.1.16 Status: Final
+Version: v0.1.14 Status: Final
 
 ## 1. Purpose
 
@@ -75,15 +75,12 @@ The property that reconstruct(serialize(directory)) produces a directory
 tree identical to the original, including structure and file contents.
 
 **Exclusion Pattern**\
-A name-based glob pattern that controls which filesystem entries are
-omitted during serialization. Patterns may be supplied via the `--exclude`
-CLI option or read from a `.treestreamignore` file at the Root Directory
-(see FR14 and Section 9.11). An entry (file or directory) whose name
-matches any Exclusion Pattern shall be omitted from serialization.
-Pattern matching uses Python's `fnmatch` module applied to the entry
-name only (not the full relative path). If no Exclusion Patterns are in
-effect from any source, no entries are excluded and behaviour is identical
-to prior versions.
+A name-based glob pattern supplied to the serializer at invocation time.
+An entry (file or directory) whose name matches any Exclusion Pattern
+shall be omitted from serialization. Pattern matching uses Python's
+`fnmatch` module applied to the entry name only (not the full relative
+path). If no Exclusion Patterns are specified, no entries are excluded
+and behaviour is identical to prior versions.
 
 ## 3. Functional Requirements
 
@@ -144,23 +141,6 @@ excluded, its entire subtree is skipped without descent. Excluded entries
 produce no error and generate no record in the Serialized File. This is
 the only permitted form of silent omission during serialization.
 
-**FR14 --- Ignore File**\
-The system shall support a file named `.treestreamignore` located in the
-Root Directory. If present, the system shall read it before traversal
-begins and extract Exclusion Patterns from it as follows: empty lines
-shall be ignored; lines beginning with `#` are comment lines and shall
-be ignored; all other non-empty lines are treated as Exclusion Patterns.
-Patterns extracted from `.treestreamignore` shall be merged with any
-Exclusion Patterns supplied via `--exclude` and applied together as a
-single effective Exclusion Pattern set during traversal. The
-`.treestreamignore` file itself shall be automatically excluded from the
-Serialized Representation regardless of its contents and regardless of
-whether any pattern in the effective set would match it. Only a
-`.treestreamignore` file at the Root Directory level is recognised;
-files with that name in subdirectories shall not be treated as ignore
-files. If `.treestreamignore` is absent or contains no effective patterns
-(only blank lines and comments), behaviour is identical to prior versions.
-
 ## 4. Non-Functional Requirements
 
 **NFR1 --- Determinism**\
@@ -196,10 +176,8 @@ prohibited.
 **NFR8 --- Predictable Failure Behaviour**\
 The system shall fail deterministically when encountering unsupported
 files, permission errors, or encoding violations. Entries explicitly
-excluded via Exclusion Patterns (FR13, FR14) are omitted silently; this
-is the sole permitted exception to NFR7 (Error Transparency). All other
-failures, including E13 (Ignore File Read Error), shall be explicit and
-descriptive.
+excluded via Exclusion Patterns (FR13) are omitted silently; this is
+the sole permitted exception to NFR7 (Error Transparency).
 
 **NFR9 --- Standard Library Constraint**\
 The implementation shall use only the Python 3.11+ standard library.
@@ -265,7 +243,7 @@ The Serialized File shall begin with the following header lines in the
 order shown:
 
 -   `TREESTREAM 1`
--   `SPEC_VERSION: v0.1.16`
+-   `SPEC_VERSION: v0.1.14`
 -   `ENCODING: UTF-8`
 -   `NEWLINES: LF`
 -   `RECORDS: FILE`
@@ -371,7 +349,7 @@ base64-encoded as `SGk=`):
 Header:
 
 -   `TREESTREAM 1`
--   `SPEC_VERSION: v0.1.16`
+-   `SPEC_VERSION: v0.1.14`
 -   `ENCODING: UTF-8`
 -   `NEWLINES: LF`
 -   `RECORDS: FILE`
@@ -422,7 +400,7 @@ Before reconstruction begins, the system shall:
     5.4.
 -   Validate that `TREESTREAM 1` is present and supported.
 -   Validate that `SPEC_VERSION` equals the exact supported
-    specification version string `v0.1.16` (case-sensitive).
+    specification version string `v0.1.14` (case-sensitive).
 -   Validate that `ENCODING` is `UTF-8`.
 -   Validate that `NEWLINES` is `LF`.
 -   Validate that `RECORDS` equals `FILE` exactly (case-sensitive).
@@ -589,15 +567,6 @@ The name of the Root Directory (the value that would be recorded as
 forbidden character (`/`, `\`, or a newline character). Serialization
 shall terminate with this error before writing any output.
 
-**E13 --- Ignore File Read Error**\
-A `.treestreamignore` file exists at the Root Directory but cannot be
-read as UTF-8 text. This error is distinct from E4 (which applies to
-content files): `.treestreamignore` is a configuration file read for
-pattern extraction only and is never serialized as a content file.
-Serialization shall terminate with this error before traversal begins.
-The error message shall identify `.treestreamignore` as the source of
-the failure and state that it could not be read as UTF-8.
-
 No partial Serialized File shall be considered valid if serialization
 fails.
 
@@ -670,9 +639,8 @@ Windows environments.
 
 Identical input directory trees are defined as having: - Identical
 relative paths - Identical file contents at the byte level - Identical
-directory structure - Identical effective Exclusion Pattern sets (patterns
-from `--exclude` and from `.treestreamignore` combined, same patterns
-regardless of order within each source)
+directory structure - Identical Exclusion Pattern sets (same patterns,
+regardless of order)
 
 File metadata such as timestamps, permissions, and filesystem attributes
 shall not influence serialization output.
@@ -692,8 +660,8 @@ The system shall: - Collect all eligible file paths. The traversal shall
 include all files regardless of Windows filesystem attributes such as
 Hidden, System, or Read-only, provided they meet the Text File
 definition in Section 2 and are not excluded by an Exclusion Pattern
-(see Sections 9.10 and 9.11). Directory entries matching an Exclusion
-Pattern shall not be descended into. - Canonicalise them as Relative Paths. The Relative Path shall be derived by calling Path.relative_to() on the absolute file path with the absolute Root Directory path, then converting the result to a forward-slash string using as_posix(). No Unicode normalisation shall be applied to the resulting string. - Sort them deterministically using ordinal Unicode code point ordering
+(see Section 9.10). Directory entries matching an Exclusion Pattern
+shall not be descended into. - Canonicalise them as Relative Paths. The Relative Path shall be derived by calling Path.relative_to() on the absolute file path with the absolute Root Directory path, then converting the result to a forward-slash string using as_posix(). No Unicode normalisation shall be applied to the resulting string. - Sort them deterministically using ordinal Unicode code point ordering
 (case-sensitive) over the complete Relative Path string (flat string
 comparison, not component-based). - Serialize records strictly in that
 sorted order.
@@ -826,46 +794,6 @@ by the following rules:
   fully to Sections 5 and 8.
 - Exclusion patterns do not alter the serialized format in any way;
   they control only which entries are presented for serialization.
-
-### 9.11 Ignore File Behaviour
-
-The `.treestreamignore` file is an optional serialization-time feature
-governed by the following rules:
-
-- The system shall look for a file named `.treestreamignore` in the Root
-  Directory only. A file with that name located in any subdirectory shall
-  not be treated as an ignore file and shall be subject to normal
-  serialization rules.
-- If `.treestreamignore` is absent, serialization behaviour is identical
-  to prior versions.
-- If `.treestreamignore` is present, the system shall read it before
-  traversal begins and process its lines as follows:
-  - Empty lines (zero-length after the line terminator is stripped) shall
-    be ignored.
-  - Lines beginning with `#` are comment lines and shall be ignored.
-  - All other non-empty, non-comment lines are treated as Exclusion
-    Patterns.
-- Patterns extracted from `.treestreamignore` shall be merged with any
-  Exclusion Patterns supplied via `--exclude`. The merged set constitutes
-  the effective Exclusion Pattern set and is applied identically to all
-  filesystem entries during traversal (see Section 9.10 for matching
-  semantics).
-- The `.treestreamignore` file itself shall be automatically excluded from
-  the Serialized Representation. This exclusion is unconditional: it
-  applies regardless of the file's contents and regardless of whether any
-  pattern in the effective set would independently match it.
-- If `.treestreamignore` is present but contains no effective patterns
-  (the file is empty, or contains only blank lines and comment lines),
-  behaviour is identical to prior versions.
-- Pattern matching for patterns sourced from `.treestreamignore` is
-  consistent with existing `--exclude` behaviour: patterns are matched
-  against the entry name only using Python's `fnmatch.fnmatch` function,
-  case-sensitively (see Section 9.10).
-- The `.treestreamignore` file shall be read using Python's UTF-8 codec
-  with the strict error handler. If the file cannot be decoded as UTF-8,
-  serialization shall terminate with E13. E4 (Encoding Violation) applies
-  only to content files during traversal and does not apply to
-  `.treestreamignore`.
 
 ## 10. Out of Scope
 

@@ -13,6 +13,7 @@ from .version import SPEC_VERSION
 
 _CHUNK_SIZE = 64 * 1024
 _REPARSE_POINT_ATTR = 0x0400
+_IGNORE_FILE_NAME = ".treestreamignore"
 
 
 def _is_reparse_point(entry) -> bool:
@@ -44,6 +45,8 @@ def _collect_files(root_abs: Path, exclude: list[str] | None = None) -> list[tup
 
         dirs: list[Path] = []
         for entry in entries:
+            if current == root_abs and entry.name == _IGNORE_FILE_NAME and entry.is_file(follow_symlinks=False):
+                continue
             if any(fnmatch.fnmatch(entry.name, pattern) for pattern in patterns):
                 continue
             if _is_reparse_point(entry):
@@ -77,6 +80,34 @@ def _collect_files(root_abs: Path, exclude: list[str] | None = None) -> list[tup
 
     collected.sort(key=lambda item: item[0])
     return collected
+
+
+def _read_ignore_patterns(root_abs: Path) -> list[str]:
+    ignore_file = root_abs / _IGNORE_FILE_NAME
+    if not ignore_file.is_file():
+        return []
+
+    try:
+        text = ignore_file.read_text(encoding="utf-8", errors="strict")
+    except UnicodeDecodeError as exc:
+        raise TreeStreamError("E13", "serialization", f"{_IGNORE_FILE_NAME} could not be read as UTF-8", str(ignore_file)) from exc
+    except PermissionError as exc:
+        raise TreeStreamError("E2", "serialization", "permission denied while reading ignore file", str(ignore_file)) from exc
+    except OSError as exc:
+        raise TreeStreamError("E5", "serialization", "filesystem access error while reading ignore file", str(ignore_file)) from exc
+
+    patterns: list[str] = []
+    for line in text.splitlines():
+        if line == "" or line.startswith("#"):
+            continue
+        patterns.append(line)
+    return patterns
+
+
+def _build_effective_exclusions(root_abs: Path, exclude: list[str] | None) -> list[str]:
+    patterns = list(exclude or [])
+    patterns.extend(_read_ignore_patterns(root_abs))
+    return patterns
 
 
 def _write_record(handle, rel_path: str, file_path: Path, declared_size: int) -> None:
@@ -142,7 +173,7 @@ def serialize(
         raise TreeStreamError("E1", "serialization", "root path is not a directory", str(root))
 
     root_name = derive_root_name(root_abs, "serialization")
-    files = _collect_files(root_abs, exclude=exclude)
+    files = _collect_files(root_abs, exclude=_build_effective_exclusions(root_abs, exclude))
 
     out_path = Path(output_file)
     out_parent = out_path.parent if out_path.parent != Path("") else Path(".")

@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from treestream.cli import build_parser
+from treestream.errors import TreeStreamError
 from treestream.serializer import serialize
 
 
@@ -112,8 +113,116 @@ class ExclusionFilterTests(unittest.TestCase):
 
         self.assertEqual(explicit_empty, baseline)
 
+    def test_s30_root_treestreamignore_excludes_files_and_ignores_comments_and_blank_lines(self) -> None:
+        root = self._make_root("s30")
+        self._write_text(root / "keep.txt", "keep\n")
+        self._write_text(root / "skip.pyc", "compiled?\n")
+        self._write_text(root / "#literal.txt", "comment names are not patterns\n")
+        self._write_text(root / "blank.txt", "blank\n")
+        self._write_text(root / ".treestreamignore", "# comment\n\n*.pyc\n\n")
+
+        output = self._serialize(root)
+
+        self.assertEqual(self._record_paths(output), ["#literal.txt", "blank.txt", "keep.txt"])
+        self.assertNotIn("PATH: .treestreamignore\n", output.decode("utf-8"))
+
+    def test_s31_root_treestreamignore_excludes_directory_without_descent(self) -> None:
+        root = self._make_root("s31")
+        self._write_text(root / "keep" / "data.txt", "keep\n")
+        self._write_text(root / "skip_dir" / "nested.txt", "skip\n")
+        self._write_text(root / ".treestreamignore", "skip_dir\n")
+
+        scanned: list[Path] = []
+        original_scandir = __import__("treestream.serializer", fromlist=["os"]).os.scandir
+
+        def tracking_scandir(path):
+            scanned.append(Path(path))
+            return original_scandir(path)
+
+        output_path = self.workdir / "s31.treestream"
+        with patch("treestream.serializer.os.scandir", side_effect=tracking_scandir):
+            serialize(root, output_path)
+
+        self.assertEqual(self._record_paths(output_path.read_bytes()), ["keep/data.txt"])
+        self.assertNotIn(root / "skip_dir", scanned)
+
+    def test_s32_absent_ignore_matches_baseline_and_empty_ignore_matches_without_ignore(self) -> None:
+        baseline_root = self._make_named_root("s32", "project")
+        self._write_text(baseline_root / "src" / "main.py", "print('ok')\n")
+        self._write_text(baseline_root / "notes.txt", "notes\n")
+
+        empty_ignore_root = self._make_named_root("s32_empty", "project")
+        self._write_text(empty_ignore_root / "src" / "main.py", "print('ok')\n")
+        self._write_text(empty_ignore_root / "notes.txt", "notes\n")
+        self._write_text(empty_ignore_root / ".treestreamignore", "")
+
+        baseline = self._serialize(baseline_root)
+        absent_ignore = self._serialize(baseline_root)
+        empty_ignore = self._serialize(empty_ignore_root)
+
+        self.assertEqual(absent_ignore, baseline)
+        self.assertEqual(empty_ignore, baseline)
+
+    def test_s33_ignore_file_and_cli_exclude_are_merged(self) -> None:
+        root = self._make_root("s33")
+        self._write_text(root / "keep.txt", "keep\n")
+        self._write_text(root / "skip.pyc", "compiled?\n")
+        self._write_text(root / "cache" / "entry.txt", "cache\n")
+        self._write_text(root / ".treestreamignore", "*.pyc\n")
+
+        output = self._serialize(root, exclude=["cache"])
+
+        self.assertEqual(self._record_paths(output), ["keep.txt"])
+
+    def test_s34_root_ignore_is_never_serialized_and_subdirectory_ignore_is_normal_file(self) -> None:
+        root = self._make_root("s34")
+        self._write_text(root / "keep.txt", "keep\n")
+        self._write_text(root / ".treestreamignore", "unused-pattern\n")
+        self._write_text(root / "nested" / ".treestreamignore", "nested config\n")
+
+        output = self._serialize(root)
+
+        self.assertEqual(self._record_paths(output), ["keep.txt", "nested/.treestreamignore"])
+
+    def test_s35_ignore_file_inputs_are_deterministic(self) -> None:
+        root = self._make_root("s35")
+        self._write_text(root / "docs" / "readme.txt", "hello\n")
+        self._write_text(root / "src" / "main.py", "print('ok')\n")
+        self._write_text(root / "src" / "main.pyc", "compiled?\n")
+        self._write_text(root / ".treestreamignore", "*.pyc\n")
+
+        run1 = self._serialize(root)
+        run2 = self._serialize(root)
+
+        self.assertEqual(run1, run2)
+
+    def test_s36_invalid_root_ignore_raises_e13_and_writes_no_output(self) -> None:
+        root = self._make_root("s36")
+        self._write_text(root / "keep.txt", "keep\n")
+        self._write_bytes(root / ".treestreamignore", b"\xff")
+
+        output = self.workdir / "s36.treestream"
+
+        with self.assertRaises(TreeStreamError) as ctx:
+            serialize(root, output)
+
+        err = ctx.exception
+        self.assertEqual(err.code, "E13")
+        self.assertEqual(err.operation, "serialization")
+        self.assertIn(".treestreamignore", str(err))
+        self.assertIn("could not be read as UTF-8", str(err))
+        self.assertNotIn("E4", str(err))
+        self.assertFalse(output.exists())
+
     def _make_root(self, name: str) -> Path:
         root = self.workdir / name
+        root.mkdir()
+        return root
+
+    def _make_named_root(self, parent_name: str, root_name: str) -> Path:
+        parent = self.workdir / parent_name
+        parent.mkdir()
+        root = parent / root_name
         root.mkdir()
         return root
 
