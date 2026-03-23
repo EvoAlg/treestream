@@ -1,0 +1,5 @@
+# TreeStream self-serialisation excludes
+.git
+__pycache__
+artifacts
+fixtures
